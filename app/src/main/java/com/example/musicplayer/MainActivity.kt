@@ -37,6 +37,7 @@ class MainActivity : AppCompatActivity() {
     private val handler = android.os.Handler()
     private lateinit var timeText: TextView
     private lateinit var adapter: AudioAdapter
+    private lateinit var repeatButton: Button
 
     // シークバーの状態を更新
     private val progressReceiver = object : BroadcastReceiver() {
@@ -81,7 +82,9 @@ class MainActivity : AppCompatActivity() {
         seekBar = findViewById(R.id.seekBar)
         timeText = findViewById(R.id.timeText)
         val queueButton = findViewById<Button>(R.id.queueButton)
-                
+        repeatButton = findViewById(R.id.repeatButton)
+
+
         playPauseButton.setOnClickListener {
 
             if (currentAudio == null) {
@@ -129,6 +132,11 @@ class MainActivity : AppCompatActivity() {
         queueButton.setOnClickListener {
             val intent = Intent(this, QueueActivity::class.java)
             startActivity(intent)
+        }
+        repeatButton.setOnClickListener {
+            val intent = Intent(this, MusicService::class.java)
+            intent.action = "TOGGLE_REPEAT"
+            startService(intent)
         }
     }
 

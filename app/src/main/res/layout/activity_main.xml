@@ -43,6 +43,12 @@
         android:layout_height="wrap_content"
         android:text="キューを見る"/>
 
+    <Button
+        android:id="@+id/repeatButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="リピート再生"/>
+
     <TextView
         android:id="@+id/timeText"
         android:text="00:00 / 00:00"

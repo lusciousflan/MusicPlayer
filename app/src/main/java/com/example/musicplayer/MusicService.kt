@@ -26,6 +26,7 @@ class MusicService : Service() {
     private var currentAlbumId: Long = -1
     // private val playQueue: MutableList<AudioFile> = mutableListOf()
     private var currentIndex = -1
+    var isRepeatAll = true
 
     companion object {
         var playQueue: MutableList<AudioFile> = mutableListOf()
@@ -94,6 +95,13 @@ class MusicService : Service() {
                 val position = intent.getIntExtra("position", 0)
                 mediaPlayer?.seekTo(position)
             }
+            "TOGGLE_REPEAT" -> {
+                isRepeatAll = !isRepeatAll
+                Toast.makeText(this, 
+                    if (isRepeatAll) "リピートON" else "リピートOFF",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
         }
 
         return START_STICKY
@@ -158,10 +166,16 @@ class MusicService : Service() {
     private fun playNext() {
         currentIndex++
 
+        // キューの最後まで再生したとき
         if (currentIndex >= playQueue.size) {
-            // キュー終了
-            stopSelf()
-            return
+            if (isRepeatAll) {
+                // 先頭に戻る
+                currentIndex = 0
+            } else {
+                // 止める
+                stopSelf()
+                return
+            }
         }
 
         playCurrent()
