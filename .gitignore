@@ -1,0 +1,41 @@
+# Gradle
+
+.gradle/
+build/
+
+# Local config
+
+local.properties
+
+# Android Studio
+
+.idea/
+*.iml
+
+# OS files
+
+.DS_Store
+Thumbs.db
+
+# Keystore（絶対に公開しない）
+
+*.jks
+*.keystore
+
+# Logs
+
+*.log
+
+# Generated files
+
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Kotlin
+
+*.kotlin_module
+
+# vscode
+
+.vscode/
