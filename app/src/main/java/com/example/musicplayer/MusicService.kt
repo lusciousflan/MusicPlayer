@@ -24,9 +24,9 @@ class MusicService : Service() {
     private var currentArtist: String = ""
     private var isPlaying = false
     private var currentAlbumId: Long = -1
-    // private val playQueue: MutableList<AudioFile> = mutableListOf()
     private var currentIndex = -1
     var isRepeatAll = true
+    var isShuffle = false
 
     companion object {
         var playQueue: MutableList<AudioFile> = mutableListOf()
@@ -101,6 +101,24 @@ class MusicService : Service() {
                     if (isRepeatAll) "リピートON" else "リピートOFF",
                     Toast.LENGTH_SHORT
                 ).show()
+                val intent = Intent("REPEAT_STATE_CHANGED")
+                intent.putExtra("isRepeatAll", isRepeatAll)
+                sendBroadcast(intent)
+            }
+            "TOGGLE_SHUFFLE" -> {
+                isShuffle = !isShuffle
+                Toast.makeText(this, 
+                    if (isShuffle) "シャッフルON" else "シャッフルOFF",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                if (isShuffle) {
+                    shuffleQueue()
+                }
+
+                val intent = Intent("SHUFFLE_STATE_CHANGED")
+                intent.putExtra("isShuffle", isShuffle)
+                sendBroadcast(intent)
             }
         }
 
@@ -147,6 +165,27 @@ class MusicService : Service() {
             currentIndex = 0
             playCurrent()
         }
+    }
+
+    private fun shuffleQueue() {
+        if (playQueue.isEmpty()) return
+
+        // 再生中の曲を保持
+        val current = playQueue.getOrNull(currentIndex) ?: return
+
+        // 現在の曲以外を取り出す
+        val others = playQueue.filterIndexed { index, _ -> index != currentIndex }.toMutableList()
+
+        // シャッフル
+        others.shuffle()
+
+        // 新しいキュー作成（先頭に現在の曲）
+        playQueue.clear()
+        playQueue.add(current)
+        playQueue.addAll(others)
+
+        // インデックスをリセット
+        currentIndex = 0
     }
 
     private fun playCurrent() {

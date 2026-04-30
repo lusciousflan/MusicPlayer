@@ -38,6 +38,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var timeText: TextView
     private lateinit var adapter: AudioAdapter
     private lateinit var repeatButton: Button
+    private lateinit var shuffleButton: Button
 
     // シークバーの状態を更新
     private val progressReceiver = object : BroadcastReceiver() {
@@ -65,6 +66,28 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    //リピートボタンの見た目を切り替える
+    private val repeatReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val isRepeat = intent?.getBooleanExtra("isRepeatAll", false) ?: false
+            updateRepeatButton(isRepeat)
+        }
+    }
+    private fun updateRepeatButton(isRepeat: Boolean) {
+        repeatButton.text = if (isRepeat) "リピートON" else "リピートOFF"
+    }
+
+    // シャッフルボタンの見た目を切り替える
+    private val shuffleReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val isShuffle = intent?.getBooleanExtra("isShuffle", false) ?: false
+            updateShuffleButton(isShuffle)
+        }
+    }
+    private fun updateShuffleButton(isShuffle: Boolean) {
+        shuffleButton.text = if (isShuffle) "シャッフル ON" else "シャッフル OFF"
+    }
+
     // 画面関連処理
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,6 +106,7 @@ class MainActivity : AppCompatActivity() {
         timeText = findViewById(R.id.timeText)
         val queueButton = findViewById<Button>(R.id.queueButton)
         repeatButton = findViewById(R.id.repeatButton)
+        shuffleButton = findViewById(R.id.shuffleButton)
 
 
         playPauseButton.setOnClickListener {
@@ -138,6 +162,11 @@ class MainActivity : AppCompatActivity() {
             intent.action = "TOGGLE_REPEAT"
             startService(intent)
         }
+        shuffleButton.setOnClickListener {
+            val intent = Intent(this, MusicService::class.java)
+            intent.action = "TOGGLE_SHUFFLE"
+            startService(intent)
+        }
     }
 
     override fun onResume() {
@@ -145,6 +174,8 @@ class MainActivity : AppCompatActivity() {
         registerReceiver(progressReceiver, IntentFilter("MUSIC_PROGRESS"))
         registerReceiver(nextReceiver, IntentFilter("MUSIC_NEXT"))
         registerReceiver(prevReceiver, IntentFilter("MUSIC_PREV"))
+        registerReceiver(repeatReceiver, IntentFilter("REPEAT_STATE_CHANGED"))
+        registerReceiver(shuffleReceiver, IntentFilter("SHUFFLE_STATE_CHANGED"))
     }
 
     override fun onPause() {
@@ -152,6 +183,8 @@ class MainActivity : AppCompatActivity() {
         unregisterReceiver(progressReceiver)
         unregisterReceiver(nextReceiver)
         unregisterReceiver(prevReceiver)
+        unregisterReceiver(repeatReceiver)
+        unregisterReceiver(shuffleReceiver)
     }
 
     private fun setupRecycler() {
