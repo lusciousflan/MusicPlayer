@@ -45,23 +45,17 @@ class MusicService : Service() {
                 val audio = intent.getSerializableExtra("audio") as? AudioFile
                     if (audio != null) {
                         Toast.makeText(this, "再生します", Toast.LENGTH_SHORT).show()
+                        // キューのリセット
                         playQueue.clear()
                         playQueue.add(audio)
                         currentIndex = 0
+                        // 再生ボタンの見た目切り替えメッセージの送信
+                        val intent = Intent("PLAYING_STATE_CHANGED")
+                        intent.putExtra("isPlaying", isPlaying)
+                        sendBroadcast(intent)
+                        // 再生
                         playCurrent()
                     }
-                uriString?.let {
-                    try {
-                        // val uri = Uri.parse(intent.getStringExtra("uri"))
-                        // currentTitle = intent.getStringExtra("title") ?: "Unknown"
-                        // currentArtist = intent.getStringExtra("artist") ?: ""
-                        // currentAlbumId = intent.getLongExtra("albumId", -1)
-                        // play(uri)
-                        // isPlaying = true
-                    } catch (e: Exception) {
-                        Toast.makeText(this, "再生できません", Toast.LENGTH_SHORT).show()
-                    }
-                }
             }
             "PAUSE" -> {
                 mediaPlayer?.pause()
@@ -134,13 +128,11 @@ class MusicService : Service() {
             prepare()
 
             setOnCompletionListener {
-                // sendNext()
                 playNext()
             }
 
             setOnErrorListener { _, _, _ ->
                 playNext()
-                // sendNext()
                 true
             }
             start()
@@ -148,13 +140,6 @@ class MusicService : Service() {
 
         startForeground(1, createNotification())
         startProgressUpdates()
-    }
-
-    private fun sendNext() {
-        sendBroadcast(Intent("MUSIC_NEXT"))
-    }
-    private fun sendPrev() {
-        sendBroadcast(Intent("MUSIC_PREV"))
     }
 
     fun addToQueue(audio: AudioFile) {

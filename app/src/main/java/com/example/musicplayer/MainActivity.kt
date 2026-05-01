@@ -28,7 +28,7 @@ class MainActivity : AppCompatActivity() {
     private var mediaPlayer: MediaPlayer? = null
     private var audioList: List<AudioFile> = emptyList()
     private var isPlaying = false
-    private var currentAudio: AudioFile? = null
+    // private var currentAudio: AudioFile? = null
     private lateinit var playPauseButton: Button
     private lateinit var nextButton: Button
     private lateinit var prevButton: Button
@@ -53,17 +53,28 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // 次の曲を再生するレシーバー
-    private val nextReceiver = object : BroadcastReceiver() {
+    // // 次の曲を再生するレシーバー
+    // private val nextReceiver = object : BroadcastReceiver() {
+    //     override fun onReceive(context: Context?, intent: Intent?) {
+    //         playNext()
+    //     }
+    // }
+    // // 前の曲を再生するレシーバー
+    // private val prevReceiver = object : BroadcastReceiver() {
+    //     override fun onReceive(context: Context?, intent: Intent?) {
+    //         playPrev()
+    //     }
+    // }
+    
+    // 再生/一時停止ボタンの見た目を切り替える
+    private val playPauseReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            playNext()
+            val isPlaying = intent?.getBooleanExtra("isPlaying", false) ?: false
+            updatePlayPauseButton(isPlaying)
         }
     }
-    // 前の曲を再生するレシーバー
-    private val prevReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            playPrev()
-        }
+    private fun updatePlayPauseButton(isPlaying: Boolean) {
+        playPauseButton.text = if (isPlaying) "停止" else "再生"
     }
 
     //リピートボタンの見た目を切り替える
@@ -111,32 +122,36 @@ class MainActivity : AppCompatActivity() {
 
         playPauseButton.setOnClickListener {
 
-            if (currentAudio == null) {
-                Toast.makeText(this, "曲を選択してください", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
+            // if (currentAudio == null) {
+            //     Toast.makeText(this, "曲を選択してください", Toast.LENGTH_SHORT).show()
+            //     return@setOnClickListener
+            // }
 
             val intent = Intent(this, MusicService::class.java)
 
             if (isPlaying) {
                 // 一時停止
                 intent.action = "PAUSE"
-                playPauseButton.text = "再生"
+                // playPauseButton.text = "再生"
                 isPlaying = false
             } else {
                 // 再開
                 intent.action = "RESUME"
-                playPauseButton.text = "停止"
+                // playPauseButton.text = "停止"
                 isPlaying = true
             }
 
             startService(intent)
         }
         nextButton.setOnClickListener {
-            playNext()
+            val intent = Intent(this, MusicService::class.java)
+            intent.action = "NEXT"
+            startService(intent)
         }
         prevButton.setOnClickListener {
-            playPrev()
+            val intent = Intent(this, MusicService::class.java)
+            intent.action = "PREV"
+            startService(intent)
         }
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
 
@@ -171,18 +186,16 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        registerReceiver(playPauseReceiver, IntentFilter("PLAYING_STATE_CHANGED"))
         registerReceiver(progressReceiver, IntentFilter("MUSIC_PROGRESS"))
-        registerReceiver(nextReceiver, IntentFilter("MUSIC_NEXT"))
-        registerReceiver(prevReceiver, IntentFilter("MUSIC_PREV"))
         registerReceiver(repeatReceiver, IntentFilter("REPEAT_STATE_CHANGED"))
         registerReceiver(shuffleReceiver, IntentFilter("SHUFFLE_STATE_CHANGED"))
     }
 
     override fun onPause() {
         super.onPause()
+        unregisterReceiver(playPauseReceiver)
         unregisterReceiver(progressReceiver)
-        unregisterReceiver(nextReceiver)
-        unregisterReceiver(prevReceiver)
         unregisterReceiver(repeatReceiver)
         unregisterReceiver(shuffleReceiver)
     }
@@ -264,45 +277,6 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private fun playNext() {
-
-        if (audioList.isEmpty()) return
-
-        currentIndex = (currentIndex + 1) % audioList.size
-        val audio = audioList[currentIndex]
-
-        playAudio(audio)
-    }
-
-    private fun playPrev() {
-
-        if (audioList.isEmpty()) return
-
-        if (currentIndex <= 0) {
-            currentIndex = audioList.size - 1
-        } else {
-            currentIndex--
-        }
-
-        val audio = audioList[currentIndex]
-
-        playAudio(audio)
-    }
-
-    private fun playAudio(audio: AudioFile) {
-        val intent = Intent(this, MusicService::class.java)
-        intent.action = "PLAY"
-        intent.putExtra("uri", audio.uri)
-        intent.putExtra("title", audio.title)
-        intent.putExtra("artist", audio.artist)
-        intent.putExtra("albumId", audio.albumId)
-        startService(intent)
-
-        isPlaying = true
-        playPauseButton.text = "停止"
-        adapter.setCurrentPlaying(currentIndex)
-
-    }
 
     private fun formatTime(ms: Int): String {
         val totalSeconds = ms / 1000
