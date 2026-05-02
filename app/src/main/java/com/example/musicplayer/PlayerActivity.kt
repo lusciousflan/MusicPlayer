@@ -13,6 +13,8 @@ import android.net.Uri
 import android.content.ContentUris
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
+import android.widget.SeekBar
+
 
 
 
@@ -21,6 +23,9 @@ class PlayerActivity : AppCompatActivity() {
     private lateinit var title: TextView
     private lateinit var playPause: Button
     lateinit var albumArt: ImageView
+    private lateinit var seekBar: SeekBar
+    private lateinit var timeText: TextView
+
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -49,6 +54,18 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
+    private val progressReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val current = intent?.getIntExtra("current", 0) ?: 0
+            val duration = intent?.getIntExtra("duration", 0) ?: 0
+
+            seekBar.max = duration
+            seekBar.progress = current
+
+            timeText.text = "${formatTime(current)} / ${formatTime(duration)}"
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_player)
@@ -56,6 +73,9 @@ class PlayerActivity : AppCompatActivity() {
         title = findViewById(R.id.playerTitle)
         playPause = findViewById(R.id.playerPlayPause)
         albumArt = findViewById(R.id.playerAlbumArt)
+        seekBar = findViewById(R.id.playerSeekBar)
+        timeText = findViewById(R.id.playerTimeText)
+
 
         playPause.setOnClickListener {
             val intent = Intent(this, MusicService::class.java)
@@ -70,17 +90,35 @@ class PlayerActivity : AppCompatActivity() {
         findViewById<Button>(R.id.playerPrev).setOnClickListener {
             startService(Intent(this, MusicService::class.java).setAction("PREV"))
         }
+        seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (fromUser) {
+                    val intent = Intent(this@PlayerActivity, MusicService::class.java)
+                    intent.action = "SEEK"
+                    intent.putExtra("position", progress)
+                    startService(intent)
+                }
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
     }
 
     override fun onResume() {
         super.onResume()
         registerReceiver(receiver, IntentFilter("NOW_PLAYING"))
         registerReceiver(receiver, IntentFilter("PLAY_STATE_CHANGED"))
+        registerReceiver(progressReceiver, IntentFilter("MUSIC_PROGRESS"))
+
     }
 
     override fun onPause() {
         super.onPause()
         unregisterReceiver(receiver)
+        unregisterReceiver(progressReceiver)
     }
 
     private fun getAlbumArtUri(albumId: Long): Uri {
@@ -88,5 +126,12 @@ class PlayerActivity : AppCompatActivity() {
             Uri.parse("content://media/external/audio/albumart"),
             albumId
         )
+    }
+
+    private fun formatTime(ms: Int): String {
+        val totalSeconds = ms / 1000
+        val minutes = totalSeconds / 60
+        val seconds = totalSeconds % 60
+        return String.format("%02d:%02d", minutes, seconds)
     }
 }
