@@ -120,8 +120,7 @@ class MainActivity : AppCompatActivity() {
         val miniPlayer = findViewById<LinearLayout>(R.id.miniPlayer)
 
         miniPlayer.setOnClickListener {
-            val intent = Intent(this, PlayerActivity::class.java)
-            startActivity(intent)
+            startActivity(Intent(this, PlayerActivity::class.java))
         }
 
         playPauseButton.setOnClickListener {

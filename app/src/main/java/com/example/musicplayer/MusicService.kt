@@ -120,6 +120,9 @@ class MusicService : Service() {
                 intent.putExtra("isShuffle", isShuffle)
                 sendBroadcast(intent)
             }
+            "REQUEST_STATE" -> {
+                sendNowPlaying()
+            }
         }
 
         return START_STICKY

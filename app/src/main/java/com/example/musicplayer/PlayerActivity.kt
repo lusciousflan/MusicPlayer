@@ -113,6 +113,10 @@ class PlayerActivity : AppCompatActivity() {
         registerReceiver(receiver, IntentFilter("PLAY_STATE_CHANGED"))
         registerReceiver(progressReceiver, IntentFilter("MUSIC_PROGRESS"))
 
+        startService(Intent(this, MusicService::class.java).apply {
+            action = "REQUEST_STATE"
+        })
+
     }
 
     override fun onPause() {
