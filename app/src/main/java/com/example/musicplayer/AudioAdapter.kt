@@ -46,7 +46,7 @@ class AudioAdapter(
         holder.title.text = audio.title
         holder.artist.text = audio.artist
 
-        val albumUri = getAlbumArtUri(audio.albumId)
+        // val albumUri = getAlbumArtUri(audio.albumId)
         Glide.with(holder.itemView)
             .load(getAlbumArtUri(audio.albumId))
             .placeholder(R.drawable.default_art)

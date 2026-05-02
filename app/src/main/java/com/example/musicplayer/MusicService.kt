@@ -43,29 +43,35 @@ class MusicService : Service() {
         when (intent?.action) {
             "PLAY" -> {
                 val audio = intent.getSerializableExtra("audio") as? AudioFile
-                    if (audio != null) {
-                        Toast.makeText(this, "再生します", Toast.LENGTH_SHORT).show()
-                        // キューのリセット
-                        playQueue.clear()
-                        playQueue.add(audio)
-                        currentIndex = 0
-                        // 再生ボタンの見た目切り替えメッセージの送信
-                        val intent = Intent("PLAYING_STATE_CHANGED")
-                        intent.putExtra("isPlaying", isPlaying)
-                        sendBroadcast(intent)
-                        // 再生
-                        playCurrent()
-                    }
+                if (audio != null) {
+                    Toast.makeText(this, "再生します", Toast.LENGTH_SHORT).show()
+                    // キューのリセット
+                    playQueue.clear()
+                    playQueue.add(audio)
+                    currentIndex = 0
+                    // 再生ボタンの見た目切り替えメッセージの送信
+                    val intent = Intent("PLAYING_STATE_CHANGED")
+                    intent.putExtra("isPlaying", isPlaying)
+                    sendBroadcast(intent)
+                    sendNowPlaying()
+                    // 再生
+                    playCurrent()
+                }
             }
-            "PAUSE" -> {
-                mediaPlayer?.pause()
-                isPlaying = false
+            "TOGGLE_PLAY" -> {
+                if (isPlaying) {
+                    mediaPlayer?.pause()
+                    isPlaying = false
+                } else {
+                    mediaPlayer?.start()
+                    isPlaying = true
+                }
                 updateNotification()
-            }
-            "RESUME" -> {
-                mediaPlayer?.start()
-                isPlaying = true
-                updateNotification()
+                // 再生ボタンの見た目切り替えメッセージの送信
+                val intent = Intent("PLAYING_STATE_CHANGED")
+                intent.putExtra("isPlaying", isPlaying)
+                sendBroadcast(intent)
+                sendNowPlaying()
             }
             "STOP" -> {
                 mediaPlayer?.stop()
@@ -183,6 +189,7 @@ class MusicService : Service() {
 
         currentTitle = audio.title
         currentAlbumId = audio.albumId
+        sendNowPlaying()
 
         play(Uri.parse(audio.uri))
     }
@@ -246,7 +253,7 @@ class MusicService : Service() {
 
         // 再生 or 一時停止
         val playPauseIntent = Intent(this, MusicService::class.java).apply {
-            action = if (isPlaying) "PAUSE" else "RESUME"
+            action = "TOGGLE_PLAY"
         }
 
         val playPausePending = PendingIntent.getService(
@@ -302,6 +309,12 @@ class MusicService : Service() {
         } catch (e: Exception) {
             null
         }
+    }
+    private fun sendNowPlaying() {
+        val intent = Intent("NOW_PLAYING")
+        intent.putExtra("title", currentTitle)
+        intent.putExtra("albumId", currentAlbumId)
+        sendBroadcast(intent)
     }
 
     override fun onDestroy() {

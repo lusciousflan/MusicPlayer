@@ -21,13 +21,14 @@ import android.content.Intent
 import android.content.BroadcastReceiver
 import android.content.IntentFilter
 import android.content.Context
+import android.widget.LinearLayout
 
 
 class MainActivity : AppCompatActivity() {
 
     private var mediaPlayer: MediaPlayer? = null
     private var audioList: List<AudioFile> = emptyList()
-    private var isPlaying = false
+    // private var isPlaying = false
     // private var currentAudio: AudioFile? = null
     private lateinit var playPauseButton: Button
     private lateinit var nextButton: Button
@@ -39,6 +40,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var adapter: AudioAdapter
     private lateinit var repeatButton: Button
     private lateinit var shuffleButton: Button
+    lateinit var miniTitle: TextView
 
     // シークバーの状態を更新
     private val progressReceiver = object : BroadcastReceiver() {
@@ -52,19 +54,6 @@ class MainActivity : AppCompatActivity() {
             timeText.text = "${formatTime(current)} / ${formatTime(duration)}"
         }
     }
-
-    // // 次の曲を再生するレシーバー
-    // private val nextReceiver = object : BroadcastReceiver() {
-    //     override fun onReceive(context: Context?, intent: Intent?) {
-    //         playNext()
-    //     }
-    // }
-    // // 前の曲を再生するレシーバー
-    // private val prevReceiver = object : BroadcastReceiver() {
-    //     override fun onReceive(context: Context?, intent: Intent?) {
-    //         playPrev()
-    //     }
-    // }
     
     // 再生/一時停止ボタンの見た目を切り替える
     private val playPauseReceiver = object : BroadcastReceiver() {
@@ -74,7 +63,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
     private fun updatePlayPauseButton(isPlaying: Boolean) {
-        playPauseButton.text = if (isPlaying) "停止" else "再生"
+        playPauseButton.text = if (isPlaying) "⏸" else "▶"
     }
 
     //リピートボタンの見た目を切り替える
@@ -99,6 +88,14 @@ class MainActivity : AppCompatActivity() {
         shuffleButton.text = if (isShuffle) "シャッフル ON" else "シャッフル OFF"
     }
 
+    // 再生中の曲のタイトルを受け取る
+    private val nowPlayingReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val title = intent?.getStringExtra("title") ?: return
+            miniTitle.text = title
+        }
+    }
+
     // 画面関連処理
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -118,7 +115,14 @@ class MainActivity : AppCompatActivity() {
         val queueButton = findViewById<Button>(R.id.queueButton)
         repeatButton = findViewById(R.id.repeatButton)
         shuffleButton = findViewById(R.id.shuffleButton)
+        miniTitle = findViewById(R.id.miniTitle)
 
+        val miniPlayer = findViewById<LinearLayout>(R.id.miniPlayer)
+
+        miniPlayer.setOnClickListener {
+            val intent = Intent(this, PlayerActivity::class.java)
+            startActivity(intent)
+        }
 
         playPauseButton.setOnClickListener {
 
@@ -128,19 +132,7 @@ class MainActivity : AppCompatActivity() {
             // }
 
             val intent = Intent(this, MusicService::class.java)
-
-            if (isPlaying) {
-                // 一時停止
-                intent.action = "PAUSE"
-                // playPauseButton.text = "再生"
-                isPlaying = false
-            } else {
-                // 再開
-                intent.action = "RESUME"
-                // playPauseButton.text = "停止"
-                isPlaying = true
-            }
-
+            intent.action = "TOGGLE_PLAY"
             startService(intent)
         }
         nextButton.setOnClickListener {
@@ -190,6 +182,7 @@ class MainActivity : AppCompatActivity() {
         registerReceiver(progressReceiver, IntentFilter("MUSIC_PROGRESS"))
         registerReceiver(repeatReceiver, IntentFilter("REPEAT_STATE_CHANGED"))
         registerReceiver(shuffleReceiver, IntentFilter("SHUFFLE_STATE_CHANGED"))
+        registerReceiver(nowPlayingReceiver, IntentFilter("NOW_PLAYING"))
     }
 
     override fun onPause() {
@@ -198,6 +191,7 @@ class MainActivity : AppCompatActivity() {
         unregisterReceiver(progressReceiver)
         unregisterReceiver(repeatReceiver)
         unregisterReceiver(shuffleReceiver)
+        unregisterReceiver(nowPlayingReceiver)
     }
 
     private fun setupRecycler() {
@@ -270,12 +264,12 @@ class MainActivity : AppCompatActivity() {
         return list
     }
 
-    private fun getAlbumArtUri(albumId: Long): Uri {
-        return ContentUris.withAppendedId(
-            Uri.parse("content://media/external/audio/albumart"),
-            albumId
-        )
-    }
+    // private fun getAlbumArtUri(albumId: Long): Uri {
+    //     return ContentUris.withAppendedId(
+    //         Uri.parse("content://media/external/audio/albumart"),
+    //         albumId
+    //     )
+    // }
 
 
     private fun formatTime(ms: Int): String {
