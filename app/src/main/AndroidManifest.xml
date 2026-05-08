@@ -13,6 +13,8 @@
 
         <activity android:name=".QueueActivity" />
         <activity android:name=".PlayerActivity" />
+        <activity android:name=".TagListActivity"/>
+        <activity android:name=".TagSongsActivity"/>
 
         <activity
             android:name=".MainActivity"

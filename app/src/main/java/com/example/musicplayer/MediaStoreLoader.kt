@@ -2,6 +2,7 @@ package com.example.musicplayer
 
 import android.content.Context
 import android.provider.MediaStore
+import android.content.ContentUris
 
 fun loadAudioFromMediaStore(context: Context): List<AudioEntity> {
 
@@ -36,9 +37,13 @@ fun loadAudioFromMediaStore(context: Context): List<AudioEntity> {
             val id = it.getLong(idIndex)
             val title = it.getString(titleIndex)
             val artist = it.getString(artistIndex)
+            val contentUri = ContentUris.withAppendedId(
+                uri,
+                id
+            ).toString()
             val albumId = it.getLong(albumIdIndex)
 
-            list.add(AudioEntity(id, title, artist, albumId))
+            list.add(AudioEntity(id, title, artist, contentUri, albumId))
         }
     }
 

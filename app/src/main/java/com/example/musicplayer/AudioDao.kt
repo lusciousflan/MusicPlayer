@@ -52,4 +52,14 @@ interface AudioDao {
         WHERE audioId = :audioId AND tagName = :tag
     """)
     suspend fun removeTag(audioId: Long, tag: String)
+
+    // あるタグが付いている楽曲をすべて取得
+    @Transaction
+    @Query("""
+        SELECT * FROM audio
+        INNER JOIN AudioTagCrossRef
+        ON audio.id = AudioTagCrossRef.audioId
+        WHERE AudioTagCrossRef.tagName = :tag
+    """)
+    suspend fun getAudioByTag(tag: String): List<AudioEntity>
 }

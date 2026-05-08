@@ -184,6 +184,9 @@ class MainActivity : AppCompatActivity() {
             intent.action = "TOGGLE_SHUFFLE"
             startService(intent)
         }
+        findViewById<Button>(R.id.tagButton).setOnClickListener {
+            startActivity(Intent(this, TagListActivity::class.java))
+        }
     }
 
     override fun onResume() {

@@ -10,6 +10,8 @@ class MyApp : Application() {
             applicationContext,
             AppDatabase::class.java,
             "music-db"
-        ).build()
+        )
+        .fallbackToDestructiveMigration()
+        .build()
     }
 }

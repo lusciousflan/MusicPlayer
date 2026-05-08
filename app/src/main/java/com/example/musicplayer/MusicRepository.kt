@@ -35,6 +35,10 @@ class MusicRepository(private val dao: AudioDao) {
         return dao.getAllTags()
     }
 
+    suspend fun getAudioByTag(tag: String): List<AudioEntity> {
+        return dao.getAudioByTag(tag)
+    }
+
     fun normalizeTag(tag: String): String {
         return tag.trim().lowercase()
     }

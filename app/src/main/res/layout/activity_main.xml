@@ -28,6 +28,12 @@
             android:text="キューを見る"/>
 
         <Button
+            android:id="@+id/tagButton"
+            android:text="タグ一覧"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <Button
             android:id="@+id/repeatButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
