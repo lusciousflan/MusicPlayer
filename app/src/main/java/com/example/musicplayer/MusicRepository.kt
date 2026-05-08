@@ -43,4 +43,47 @@ class MusicRepository(private val dao: AudioDao) {
         return tag.trim().lowercase()
     }
 
+    suspend fun createPlaylist(
+        name: String,
+        include: List<String>,
+        exclude: List<String>
+    ) {
+
+        dao.insertPlaylist(
+            PlaylistEntity(
+                name = name,
+                includeTags = include.joinToString(","),
+                excludeTags = exclude.joinToString(",")
+            )
+        )
+    }
+
+    suspend fun getPlaylistSongs(
+        playlist: PlaylistEntity
+    ): List<AudioWithTags> {
+
+        val all = dao.getAllAudioWithTags()
+
+        val include =
+            playlist.includeTags
+                .split(",")
+                .filter { it.isNotBlank() }
+
+        val exclude =
+            playlist.excludeTags
+                .split(",")
+                .filter { it.isNotBlank() }
+
+        return all.filter { audio ->
+
+            val tags = audio.tags.map { it.name }
+
+            include.all { it in tags } &&
+            exclude.none { it in tags }
+        }
+    }
+    suspend fun getAllPlaylists(): List<PlaylistEntity> {
+        return dao.getAllPlaylists()
+    }
+
 }

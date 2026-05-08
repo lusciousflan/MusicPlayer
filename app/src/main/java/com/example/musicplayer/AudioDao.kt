@@ -62,4 +62,11 @@ interface AudioDao {
         WHERE AudioTagCrossRef.tagName = :tag
     """)
     suspend fun getAudioByTag(tag: String): List<AudioEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPlaylist(playlist: PlaylistEntity)
+
+    @Query("SELECT * FROM playlist")
+    suspend fun getAllPlaylists(): List<PlaylistEntity>
+
 }

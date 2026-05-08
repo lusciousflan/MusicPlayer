@@ -187,6 +187,9 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.tagButton).setOnClickListener {
             startActivity(Intent(this, TagListActivity::class.java))
         }
+        findViewById<Button>(R.id.playlistButton).setOnClickListener {
+            startActivity(Intent(this, PlaylistListActivity::class.java))
+        }
     }
 
     override fun onResume() {

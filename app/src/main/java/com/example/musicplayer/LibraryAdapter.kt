@@ -1,0 +1,64 @@
+package com.example.musicplayer
+
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.TextView
+import androidx.recyclerview.widget.RecyclerView
+
+class LibraryAdapter(
+    private val items: List<LibraryItem>,
+    private val onPlaylistClick: (PlaylistEntity) -> Unit,
+    private val onTagClick: (TagEntity) -> Unit
+) : RecyclerView.Adapter<LibraryAdapter.ViewHolder>() {
+
+    class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val text: TextView = view.findViewById(android.R.id.text1)
+    }
+
+    override fun onCreateViewHolder(
+        parent: ViewGroup,
+        viewType: Int
+    ): ViewHolder {
+
+        val view = LayoutInflater.from(parent.context)
+            .inflate(android.R.layout.simple_list_item_1, parent, false)
+
+        return ViewHolder(view)
+    }
+
+    override fun getItemCount(): Int {
+        return items.size
+    }
+
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+
+        when (val item = items[position]) {
+
+            is LibraryItem.Header -> {
+
+                holder.text.text = item.title
+
+                holder.itemView.setOnClickListener(null)
+            }
+
+            is LibraryItem.Playlist -> {
+
+                holder.text.text = item.playlist.name
+
+                holder.itemView.setOnClickListener {
+                    onPlaylistClick(item.playlist)
+                }
+            }
+
+            is LibraryItem.Tag -> {
+
+                holder.text.text = item.tag.name
+
+                holder.itemView.setOnClickListener {
+                    onTagClick(item.tag)
+                }
+            }
+        }
+    }
+}
