@@ -22,7 +22,11 @@ import android.content.BroadcastReceiver
 import android.content.IntentFilter
 import android.content.Context
 import android.widget.LinearLayout
-
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import android.widget.EditText
+import androidx.appcompat.app.AlertDialog
 
 class MainActivity : AppCompatActivity() {
 
@@ -41,6 +45,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var repeatButton: Button
     private lateinit var shuffleButton: Button
     lateinit var miniTitle: TextView
+    private lateinit var repository: MusicRepository
 
     // シークバーの状態を更新
     private val progressReceiver = object : BroadcastReceiver() {
@@ -116,8 +121,14 @@ class MainActivity : AppCompatActivity() {
         repeatButton = findViewById(R.id.repeatButton)
         shuffleButton = findViewById(R.id.shuffleButton)
         miniTitle = findViewById(R.id.miniTitle)
-
         val miniPlayer = findViewById<LinearLayout>(R.id.miniPlayer)
+
+        val dao = (application as MyApp).database.audioDao()
+        repository = MusicRepository(dao)
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            syncMediaStore(this@MainActivity, dao)
+        }
 
         miniPlayer.setOnClickListener {
             startActivity(Intent(this, PlayerActivity::class.java))
@@ -223,6 +234,9 @@ class MainActivity : AppCompatActivity() {
                 intent.action = "ADD_TO_QUEUE"
                 intent.putExtra("audio", audio)
                 startService(intent)
+            },
+            onEditTag = { audio ->
+                showTagDialog(audio)
             }
             )
         recyclerView.adapter = adapter
@@ -304,6 +318,7 @@ class MainActivity : AppCompatActivity() {
         permissions: Array<String>,
         grantResults: IntArray
     ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 1 &&
             grantResults.isNotEmpty() &&
             grantResults[0] == PackageManager.PERMISSION_GRANTED
@@ -313,6 +328,103 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "権限が必要です", Toast.LENGTH_SHORT).show()
         }
     }
+
+    private fun showTagDialog(audio: AudioFile) {
+
+        lifecycleScope.launch {
+
+            val currentTags = repository.getTags(audio.id)
+            val items = currentTags.toMutableList()
+            items.add("＋ タグを追加する")
+
+            AlertDialog.Builder(this@MainActivity)
+                .setTitle("タグ編集")
+                .setItems(items.toTypedArray()) { _, which ->
+
+                    val selected = items[which]
+
+                    if (selected == "＋ タグを追加する") {
+                        showAddTagDialog(audio)
+                    } else {
+                        showRemoveTagDialog(audio, selected)
+                    }
+                }
+                .show()
+        }
+    }
+
+    private fun showAddTagDialog(audio: AudioFile) {
+
+        lifecycleScope.launch {
+
+            val tags = repository.getAllTags()
+            val items = tags.map { it.name }.toMutableList()
+            items.add("＋ タグを追加する")
+
+            AlertDialog.Builder(this@MainActivity)
+                .setTitle("タグを選択")
+                .setItems(items.toTypedArray()) { _, which ->
+
+                    val selected = items[which]
+
+                    if (selected == "＋ タグを追加する") {
+
+                        showCreateTagDialog(audio)
+
+                    } else {
+
+                        lifecycleScope.launch {
+                            repository.addTag(audio.id, selected)
+                        }
+                    }
+                }
+                .show()
+        }
+    }
+
+    private fun showCreateTagDialog(audio: AudioFile) {
+
+        val editText = EditText(this)
+
+        AlertDialog.Builder(this)
+            .setTitle("新しいタグ")
+            .setView(editText)
+            .setPositiveButton("追加") { _, _ ->
+
+                val tag = editText.text.toString()
+
+                if (tag.isBlank()) return@setPositiveButton
+
+                lifecycleScope.launch {
+                    repository.addTag(audio.id, tag)
+                }
+            }
+            .setNegativeButton("キャンセル", null)
+            .show()
+    }
+
+    private fun showRemoveTagDialog(audio: AudioFile, tag: String) {
+
+        AlertDialog.Builder(this)
+            .setTitle("タグ削除")
+            .setMessage("タグ「$tag」を削除しますか？")
+
+            .setPositiveButton("削除") { _, _ ->
+
+                lifecycleScope.launch {
+                    repository.removeTag(audio.id, tag)
+                }
+            }
+
+            .setNegativeButton("キャンセル", null)
+
+            .show()
+    }
+
+    suspend fun getTags(audioId: Long, dao: AudioDao): List<String> {
+        return dao.getTagsForAudio(audioId)
+    }
+    
 
     override fun onDestroy() {
         super.onDestroy()

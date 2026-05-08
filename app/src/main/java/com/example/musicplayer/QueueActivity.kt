@@ -37,7 +37,8 @@ class QueueActivity : AppCompatActivity() {
                 startService(intent)
             },
 
-            onAddToQueue = { } // ここは不要なので空
+            onAddToQueue = { }, // ここは不要なので空
+            onEditTag = { } // Queue画面でもタグの編集がしたくなったらここを編集
         )
 
         recyclerView.layoutManager = LinearLayoutManager(this)

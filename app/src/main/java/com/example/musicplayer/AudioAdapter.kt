@@ -9,12 +9,14 @@ import android.net.Uri
 import android.widget.ImageView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
+import androidx.appcompat.widget.PopupMenu
 
 class AudioAdapter(
     private val list: List<AudioFile>,
     private val getAlbumArtUri: (Long) -> Uri,
     private val onClick: (AudioFile, Int) -> Unit,
-    private val onAddToQueue: (AudioFile) -> Unit
+    private val onAddToQueue: (AudioFile) -> Unit,
+    private val onEditTag: (AudioFile) -> Unit
 ) : RecyclerView.Adapter<AudioAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -69,8 +71,38 @@ class AudioAdapter(
         holder.itemView.setOnClickListener {
             onClick(audio, position)
         }
-        holder.itemView.setOnLongClickListener {
-            onAddToQueue(audio)
+        // holder.itemView.setOnLongClickListener {
+        //     onAddToQueue(audio)
+        //     true
+        // }
+        // holder.itemView.setOnLongClickListener {
+        //     showTagDialog(it.context, audio.id, dao)
+        //     true
+        // }
+        holder.itemView.setOnLongClickListener { view ->
+            val popup = PopupMenu(view.context, view)
+            popup.menu.add("キューに追加")
+            popup.menu.add("タグ編集")
+
+            popup.setOnMenuItemClickListener { item ->
+                when (item.title) {
+
+                    "キューに追加" -> {
+                        onAddToQueue(audio)
+                        true
+                    }
+
+                    "タグ編集" -> {
+                        // showTagDialog(view.context, audio.id, dao)
+                        onEditTag(audio)
+                        true
+                    }
+
+                    else -> false
+                }
+            }
+
+            popup.show()
             true
         }
         

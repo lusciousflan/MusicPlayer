@@ -8,5 +8,6 @@ data class AudioFile(
     val title: String,
     val artist: String,
     val uri: String,
-    val albumId: Long
+    val albumId: Long,
+    val tags: MutableSet<String> = mutableSetOf()
 ) : Serializable
