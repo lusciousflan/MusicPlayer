@@ -38,6 +38,11 @@ class LibraryAdapter(
             is LibraryItem.Header -> {
 
                 holder.text.text = item.title
+                holder.text.textSize = 12f
+                holder.text.setTextColor(
+                    android.graphics.Color.GRAY
+                )
+                holder.text.setTypeface(null, android.graphics.Typeface.NORMAL)
 
                 holder.itemView.setOnClickListener(null)
             }
@@ -45,6 +50,12 @@ class LibraryAdapter(
             is LibraryItem.Playlist -> {
 
                 holder.text.text = item.playlist.name
+
+                holder.text.textSize = 18f
+                holder.text.setTextColor(
+                    android.graphics.Color.WHITE
+                )
+                holder.text.setTypeface(null, android.graphics.Typeface.BOLD)
 
                 holder.itemView.setOnClickListener {
                     onPlaylistClick(item.playlist)
@@ -54,6 +65,12 @@ class LibraryAdapter(
             is LibraryItem.Tag -> {
 
                 holder.text.text = item.tag.name
+
+                holder.text.textSize = 18f
+                holder.text.setTextColor(
+                    android.graphics.Color.WHITE
+                )
+                holder.text.setTypeface(null, android.graphics.Typeface.NORMAL)
 
                 holder.itemView.setOnClickListener {
                     onTagClick(item.tag)
