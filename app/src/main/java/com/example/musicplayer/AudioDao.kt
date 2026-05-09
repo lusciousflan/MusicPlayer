@@ -69,4 +69,9 @@ interface AudioDao {
     @Query("SELECT * FROM playlist")
     suspend fun getAllPlaylists(): List<PlaylistEntity>
 
+    @Query("SELECT * FROM playlist WHERE id = :id")
+    suspend fun getPlaylistById(
+        id: Long
+    ): PlaylistEntity
+
 }

@@ -5,6 +5,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import android.content.Intent
 
 class LibraryAdapter(
     private val items: List<LibraryItem>,
@@ -74,6 +75,20 @@ class LibraryAdapter(
 
                 holder.itemView.setOnClickListener {
                     onTagClick(item.tag)
+                }
+            }
+            is LibraryItem.CreatePlaylist -> {
+
+                holder.text.text = "＋ プレイリスト作成"
+                holder.text.textSize = 18f
+
+                holder.itemView.setOnClickListener {
+                    holder.itemView.context.startActivity(
+                        Intent(
+                            holder.itemView.context,
+                            CreatePlaylistActivity::class.java
+                        )
+                    )
                 }
             }
         }

@@ -35,6 +35,8 @@ class PlaylistListActivity : AppCompatActivity() {
 
             items.add(LibraryItem.Header("プレイリスト"))
 
+            items.add(LibraryItem.CreatePlaylist)
+
             playlists.forEach {
                 items.add(LibraryItem.Playlist(it))
             }

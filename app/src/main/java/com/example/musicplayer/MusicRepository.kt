@@ -45,15 +45,13 @@ class MusicRepository(private val dao: AudioDao) {
 
     suspend fun createPlaylist(
         name: String,
-        include: List<String>,
-        exclude: List<String>
+        expression: String
     ) {
 
         dao.insertPlaylist(
             PlaylistEntity(
                 name = name,
-                includeTags = include.joinToString(","),
-                excludeTags = exclude.joinToString(",")
+                expression = expression
             )
         )
     }
@@ -64,26 +62,31 @@ class MusicRepository(private val dao: AudioDao) {
 
         val all = dao.getAllAudioWithTags()
 
-        val include =
-            playlist.includeTags
-                .split(",")
-                .filter { it.isNotBlank() }
-
-        val exclude =
-            playlist.excludeTags
-                .split(",")
-                .filter { it.isNotBlank() }
+        // 仮実装で最初のタグのみ採用する
+        val firstTag = parseTemporaryExpression(playlist.expression)
 
         return all.filter { audio ->
 
             val tags = audio.tags.map { it.name }
+            firstTag.all { it in tags }
 
-            include.all { it in tags } &&
-            exclude.none { it in tags }
+            // include.all { it in tags } &&
+            // exclude.none { it in tags }
         }
     }
     suspend fun getAllPlaylists(): List<PlaylistEntity> {
         return dao.getAllPlaylists()
+    }
+
+    suspend fun getPlaylistById(
+        id: Long
+    ): PlaylistEntity {
+        return dao.getPlaylistById(id)
+    }
+
+    suspend fun getAllAudioWithTags():
+        List<AudioWithTags> {
+        return dao.getAllAudioWithTags()
     }
 
 }

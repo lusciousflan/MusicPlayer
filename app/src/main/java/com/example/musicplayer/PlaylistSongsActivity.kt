@@ -21,16 +21,31 @@ class PlaylistSongsActivity : AppCompatActivity() {
 
         recyclerView = findViewById(R.id.recyclerView)
 
-        val tag = intent.getStringExtra("tag") ?: return
+        // val tag = intent.getStringExtra("tag") ?: return
 
-        title = tag
+        // title = tag
+
+        val playlistId = intent.getLongExtra("playlistId", -1L)
+        if (playlistId == -1L) return
 
         val dao = (application as MyApp).database.audioDao()
         repository = MusicRepository(dao)
 
         lifecycleScope.launch {
 
-            val songs = repository.getAudioByTag(tag)
+            val playlist = repository.getPlaylistById(playlistId)
+
+            title = playlist.name
+
+            val allAudio = repository.getAllAudioWithTags()
+
+            // 仮実装で最初のタグのみを採用する
+            val firstTag = playlist.expression
+                            .split(" ")
+                            .firstOrNull()
+                            ?: return@launch
+
+            val songs = repository.getAudioByTag(firstTag)
 
             val audioFiles = songs.map {
                 AudioFile(
@@ -42,8 +57,7 @@ class PlaylistSongsActivity : AppCompatActivity() {
                 )
             }
 
-            recyclerView.layoutManager =
-                LinearLayoutManager(this@PlaylistSongsActivity)
+            recyclerView.layoutManager = LinearLayoutManager(this@PlaylistSongsActivity)
 
             recyclerView.adapter = AudioAdapter(
                 list = audioFiles,

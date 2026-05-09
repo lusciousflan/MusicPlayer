@@ -11,7 +11,17 @@ data class PlaylistEntity(
 
     val name: String,
 
-    val includeTags: String,
-
-    val excludeTags: String
+    val expression: String
 )
+
+// 仮実装
+fun parseTemporaryExpression(
+    expression: String
+): Set<String> {
+
+    return expression
+        .split(" ")
+        .firstOrNull()
+        ?.let { setOf(it) }
+        ?: emptySet()
+}

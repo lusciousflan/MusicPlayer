@@ -17,6 +17,7 @@
         <activity android:name=".TagSongsActivity"/>
         <activity android:name=".PlaylistListActivity"/>
         <activity android:name=".PlaylistSongsActivity"/>
+        <activity android:name=".CreatePlaylistActivity"/>
 
 
         <activity

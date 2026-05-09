@@ -13,4 +13,6 @@ sealed class LibraryItem {
     data class Tag(
         val tag: TagEntity
     ) : LibraryItem()
+    
+    object CreatePlaylist : LibraryItem()
 }
