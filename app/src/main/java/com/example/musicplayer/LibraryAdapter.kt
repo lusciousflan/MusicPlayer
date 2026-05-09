@@ -53,7 +53,7 @@ class LibraryAdapter(
 
                 holder.text.textSize = 18f
                 holder.text.setTextColor(
-                    android.graphics.Color.WHITE
+                    android.graphics.Color.BLACK
                 )
                 holder.text.setTypeface(null, android.graphics.Typeface.BOLD)
 
@@ -68,7 +68,7 @@ class LibraryAdapter(
 
                 holder.text.textSize = 18f
                 holder.text.setTextColor(
-                    android.graphics.Color.WHITE
+                    android.graphics.Color.BLACK
                 )
                 holder.text.setTypeface(null, android.graphics.Typeface.NORMAL)
 
