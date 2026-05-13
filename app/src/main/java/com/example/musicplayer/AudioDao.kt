@@ -74,4 +74,8 @@ interface AudioDao {
         id: Long
     ): PlaylistEntity
 
+    // 全タグ名を取得
+    @Query("SELECT name FROM tag")
+    suspend fun getAllTagNames(): List<String>
+
 }

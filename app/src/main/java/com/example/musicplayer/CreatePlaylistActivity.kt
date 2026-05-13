@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 import android.text.Editable
 import android.text.TextWatcher
 import android.widget.TextView
+import android.graphics.Color
 
 class CreatePlaylistActivity : AppCompatActivity() {
 
@@ -23,6 +24,116 @@ class CreatePlaylistActivity : AppCompatActivity() {
         val container = findViewById<LinearLayout>(R.id.tagContainer)
         val saveButton = findViewById<Button>(R.id.savePlaylist)
         val expressionStatus = findViewById<TextView>(R.id.expressionStatus)
+        val expressionEdit = findViewById<EditText>(R.id.expressionEdit)
+
+        expressionEdit.addTextChangedListener(
+
+            object : TextWatcher {
+
+                override fun beforeTextChanged(
+                    s: CharSequence?,
+                    start: Int,
+                    count: Int,
+                    after: Int
+                ) {}
+
+                override fun onTextChanged(
+                    s: CharSequence?,
+                    start: Int,
+                    before: Int,
+                    count: Int
+                ) {
+
+                    val text = s.toString()
+
+                    if (text.isBlank()) {
+                        expressionStatus.text = ""
+                        return
+                    }
+
+                    lifecycleScope.launch {
+
+                        try {
+                            val tokens = tokenize(text)
+
+                            val evaluator = PlaylistEvaluator(
+                                    tokens,
+                                    emptyList()
+                                )
+
+                            evaluator.evaluate()
+
+                            val existingTags = dao.getAllTagNames()
+                                .map {
+                                    normalizeTag(it)
+                                }
+                                .toSet()
+
+                            val unknownTags = tokens
+                                .filterIsInstance<Token.Tag>()
+                                .map { it.name }
+                                .distinct()
+                                .filter {
+                                    it !in existingTags
+                                }
+
+                            if (unknownTags.isNotEmpty()) {
+
+                                expressionStatus.setTextColor(
+                                    Color.YELLOW
+                                )
+
+                                expressionStatus.text =
+                                    "Unknown tag: ${
+                                        unknownTags.joinToString()
+                                    }"
+
+                            } else {
+
+                                expressionStatus.setTextColor(
+                                    Color.GREEN
+                                )
+
+                                expressionStatus.text =
+                                    "✓ Valid expression"
+                            }
+
+                        } catch (
+                            e: PlaylistSyntaxException
+                        ) {
+
+                            expressionStatus.setTextColor(
+                                Color.RED
+                            )
+
+                            expressionStatus.text =
+                                e.message
+                        }
+                    }
+
+                    // try {
+
+                    //     val tokens = tokenize(text)
+                    //     val evaluator = PlaylistEvaluator(
+                    //             tokens,
+                    //             emptyList()
+                    //         )
+
+                    //     evaluator.evaluate()
+                    //     expressionStatus.text = "✓ Valid expression"
+
+                    // } catch (
+                    //     e: PlaylistSyntaxException
+                    // ) {
+                    //     expressionStatus.text = e.message
+                    // }
+                }
+
+                override fun afterTextChanged(
+                    s: Editable?
+                ) {}
+            }
+        )
 
         lifecycleScope.launch {
 
@@ -39,57 +150,6 @@ class CreatePlaylistActivity : AppCompatActivity() {
             }
 
             saveButton.setOnClickListener {
-
-                val expressionEdit = findViewById<EditText>(R.id.expressionEdit)
-
-                expressionEdit.addTextChangedListener(
-
-                    object : TextWatcher {
-
-                        override fun beforeTextChanged(
-                            s: CharSequence?,
-                            start: Int,
-                            count: Int,
-                            after: Int
-                        ) {}
-
-                        override fun onTextChanged(
-                            s: CharSequence?,
-                            start: Int,
-                            before: Int,
-                            count: Int
-                        ) {
-
-                            val text = s.toString()
-
-                            if (text.isBlank()) {
-                                expressionStatus.text = ""
-                                return
-                            }
-
-                            try {
-
-                                val tokens = tokenize(text)
-                                val evaluator = PlaylistEvaluator(
-                                        tokens,
-                                        emptyList()
-                                    )
-
-                                evaluator.evaluate()
-                                expressionStatus.text = "✓ Valid expression"
-
-                            } catch (
-                                e: PlaylistSyntaxException
-                            ) {
-                                expressionStatus.text = e.message
-                            }
-                        }
-
-                        override fun afterTextChanged(
-                            s: Editable?
-                        ) {}
-                    }
-                )
 
                 lifecycleScope.launch {
 
