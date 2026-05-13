@@ -5,6 +5,9 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import android.text.Editable
+import android.text.TextWatcher
+import android.widget.TextView
 
 class CreatePlaylistActivity : AppCompatActivity() {
 
@@ -19,6 +22,7 @@ class CreatePlaylistActivity : AppCompatActivity() {
         val nameEdit = findViewById<EditText>(R.id.playlistName)
         val container = findViewById<LinearLayout>(R.id.tagContainer)
         val saveButton = findViewById<Button>(R.id.savePlaylist)
+        val expressionStatus = findViewById<TextView>(R.id.expressionStatus)
 
         lifecycleScope.launch {
 
@@ -37,6 +41,55 @@ class CreatePlaylistActivity : AppCompatActivity() {
             saveButton.setOnClickListener {
 
                 val expressionEdit = findViewById<EditText>(R.id.expressionEdit)
+
+                expressionEdit.addTextChangedListener(
+
+                    object : TextWatcher {
+
+                        override fun beforeTextChanged(
+                            s: CharSequence?,
+                            start: Int,
+                            count: Int,
+                            after: Int
+                        ) {}
+
+                        override fun onTextChanged(
+                            s: CharSequence?,
+                            start: Int,
+                            before: Int,
+                            count: Int
+                        ) {
+
+                            val text = s.toString()
+
+                            if (text.isBlank()) {
+                                expressionStatus.text = ""
+                                return
+                            }
+
+                            try {
+
+                                val tokens = tokenize(text)
+                                val evaluator = PlaylistEvaluator(
+                                        tokens,
+                                        emptyList()
+                                    )
+
+                                evaluator.evaluate()
+                                expressionStatus.text = "✓ Valid expression"
+
+                            } catch (
+                                e: PlaylistSyntaxException
+                            ) {
+                                expressionStatus.text = e.message
+                            }
+                        }
+
+                        override fun afterTextChanged(
+                            s: Editable?
+                        ) {}
+                    }
+                )
 
                 lifecycleScope.launch {
 

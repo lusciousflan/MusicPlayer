@@ -17,6 +17,13 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"/>
 
+        <TextView
+            android:id="@+id/expressionStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:paddingTop="4dp"/>
+
         <EditText
             android:id="@+id/playlistName"
             android:hint="プレイリスト名"

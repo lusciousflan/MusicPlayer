@@ -8,6 +8,7 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import android.net.Uri
 import android.content.ContentUris
+import android.widget.Toast
 
 
 class PlaylistSongsActivity : AppCompatActivity() {
@@ -39,38 +40,73 @@ class PlaylistSongsActivity : AppCompatActivity() {
 
             val allAudio = repository.getAllAudioWithTags()
 
-            // 仮実装で最初のタグのみを採用する
-            val firstTag = playlist.expression
-                            .split(" ")
-                            .firstOrNull()
-                            ?: return@launch
+            val tokens = tokenize(playlist.expression)
 
-            val songs = repository.getAudioByTag(firstTag)
+            try {
 
-            val audioFiles = songs.map {
-                AudioFile(
-                    id = it.id,
-                    title = it.title,
-                    artist = it.artist,
-                    uri = it.uri,
-                    albumId = it.albumId
+                val evaluator = PlaylistEvaluator(
+                        tokens,
+                        allAudio
+                    )
+
+                val result = evaluator.evaluate()
+
+                val audioFiles = result.map {
+                    AudioFile(
+                        id = it.audio.id,
+                        title = it.audio.title,
+                        artist = it.audio.artist,
+                        uri = it.audio.uri,
+                        albumId = it.audio.albumId
+                    )
+                }
+
+                recyclerView.adapter = AudioAdapter(
+                    list = audioFiles,
+                    getAlbumArtUri = { albumId ->
+                        ContentUris.withAppendedId(
+                            Uri.parse("content://media/external/audio/albumart"),
+                            albumId
+                        )
+                    },
+                    onClick = { _, _ -> },
+                    onAddToQueue = { },
+                    onEditTag = { }
                 )
+
+            } catch (e: PlaylistSyntaxException) {
+
+                Toast.makeText(
+                    this@PlaylistSongsActivity,
+                    e.message,
+                    Toast.LENGTH_LONG
+                ).show()
             }
+
+            // val audioFiles = result.map {
+            //     AudioFile(
+            //         id = it.audio.id,
+            //         title = it.audio.title,
+            //         artist = it.audio.artist,
+            //         uri = it.audio.uri,
+            //         albumId = it.audio.albumId
+            //     )
+            // }
 
             recyclerView.layoutManager = LinearLayoutManager(this@PlaylistSongsActivity)
 
-            recyclerView.adapter = AudioAdapter(
-                list = audioFiles,
-                getAlbumArtUri = { albumId ->
-                    ContentUris.withAppendedId(
-                        Uri.parse("content://media/external/audio/albumart"),
-                        albumId
-                    )
-                },
-                onClick = { _, _ -> },
-                onAddToQueue = { },
-                onEditTag = { }
-            )
+            // recyclerView.adapter = AudioAdapter(
+            //     list = audioFiles,
+            //     getAlbumArtUri = { albumId ->
+            //         ContentUris.withAppendedId(
+            //             Uri.parse("content://media/external/audio/albumart"),
+            //             albumId
+            //         )
+            //     },
+            //     onClick = { _, _ -> },
+            //     onAddToQueue = { },
+            //     onEditTag = { }
+            // )
         }
     }
 }
