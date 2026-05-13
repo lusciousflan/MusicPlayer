@@ -102,4 +102,10 @@ class PlaylistListActivity : AppCompatActivity() {
             )
         }
     }
+    
+    override fun onResume() {
+        super.onResume()
+
+        loadLibrary()
+    }
 }
