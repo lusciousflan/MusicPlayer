@@ -10,7 +10,8 @@ import android.content.Intent
 class LibraryAdapter(
     private val items: List<LibraryItem>,
     private val onPlaylistClick: (PlaylistEntity) -> Unit,
-    private val onTagClick: (TagEntity) -> Unit
+    private val onTagClick: (TagEntity) -> Unit,
+    private val onPlaylistLongClick: (PlaylistEntity) -> Unit
 ) : RecyclerView.Adapter<LibraryAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -60,6 +61,11 @@ class LibraryAdapter(
 
                 holder.itemView.setOnClickListener {
                     onPlaylistClick(item.playlist)
+                }
+
+                holder.itemView.setOnLongClickListener {
+                    onPlaylistLongClick(item.playlist)
+                    true
                 }
             }
 

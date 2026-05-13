@@ -2,9 +2,11 @@ package com.example.musicplayer
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.Delete
 import androidx.room.Query
 import androidx.room.OnConflictStrategy
 import androidx.room.Transaction
+import androidx.room.RewriteQueriesToDropUnusedColumns
 
 @Dao
 interface AudioDao {
@@ -55,6 +57,7 @@ interface AudioDao {
 
     // あるタグが付いている楽曲をすべて取得
     @Transaction
+    @RewriteQueriesToDropUnusedColumns
     @Query("""
         SELECT * FROM audio
         INNER JOIN AudioTagCrossRef
@@ -65,6 +68,9 @@ interface AudioDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPlaylist(playlist: PlaylistEntity)
+
+    @Delete
+    suspend fun deletePlaylist(playlist: PlaylistEntity)
 
     @Query("SELECT * FROM playlist")
     suspend fun getAllPlaylists(): List<PlaylistEntity>

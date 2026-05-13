@@ -9,12 +9,14 @@ import android.widget.ArrayAdapter
 import android.content.Intent
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.appcompat.app.AlertDialog
 
 
 class PlaylistListActivity : AppCompatActivity() {
 
     private lateinit var repository: MusicRepository
     private lateinit var recyclerView: RecyclerView
+    private lateinit var dao: AudioDao
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -23,8 +25,33 @@ class PlaylistListActivity : AppCompatActivity() {
         recyclerView = findViewById(R.id.recyclerView)
         recyclerView.layoutManager = LinearLayoutManager(this)
 
-        val dao = (application as MyApp).database.audioDao()
+        dao = (application as MyApp).database.audioDao()
         repository = MusicRepository(dao)
+
+        loadLibrary()
+
+    }
+
+    private fun showDeletePlaylistDialog(
+        playlist: PlaylistEntity
+    ) {
+
+        AlertDialog.Builder(this)
+            .setTitle("プレイリスト削除")
+            .setMessage(
+                "「${playlist.name}」を削除しますか？"
+            )
+            .setPositiveButton("削除") { _, _ ->
+                lifecycleScope.launch {
+                    dao.deletePlaylist(playlist)
+                    loadLibrary()
+                }
+            }
+            .setNegativeButton("キャンセル", null)
+            .show()
+    }
+
+    private fun loadLibrary() {
 
         lifecycleScope.launch {
 
@@ -49,29 +76,28 @@ class PlaylistListActivity : AppCompatActivity() {
 
             recyclerView.adapter = LibraryAdapter(
                 items,
-
                 onPlaylistClick = { playlist ->
-
                     val intent = Intent(
                         this@PlaylistListActivity,
                         PlaylistSongsActivity::class.java
                     )
-
                     intent.putExtra("playlistId", playlist.id)
-
                     startActivity(intent)
                 },
 
                 onTagClick = { tag ->
-
                     val intent = Intent(
                         this@PlaylistListActivity,
                         TagSongsActivity::class.java
                     )
-
                     intent.putExtra("tag", tag.name)
-
                     startActivity(intent)
+                },
+
+                onPlaylistLongClick = { playlist ->
+                    showDeletePlaylistDialog(
+                        playlist
+                    )
                 }
             )
         }
