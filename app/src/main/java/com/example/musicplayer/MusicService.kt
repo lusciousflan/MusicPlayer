@@ -89,6 +89,20 @@ class MusicService : Service() {
                     }
                 }
             }
+            "ADD_LIST_TO_QUEUE" -> {
+                val audios = intent.getSerializableExtra(
+                        "audioList"
+                    ) as? ArrayList<AudioFile>
+
+                audios?.forEach { audio ->
+                    val alreadyExists = playQueue.any {
+                            it.uri == audio.uri
+                        }
+                    if (!alreadyExists) {
+                        addToQueue(audio)
+                    }
+                }
+            }
             "NEXT" -> playNext()
             "PREV" -> playPrev()
             "SEEK" -> {

@@ -9,22 +9,22 @@ import kotlinx.coroutines.launch
 import android.net.Uri
 import android.content.ContentUris
 import android.widget.Toast
+import android.view.Menu
+import android.view.MenuItem
+import android.content.Intent
 
 
 class PlaylistSongsActivity : AppCompatActivity() {
 
     private lateinit var repository: MusicRepository
     private lateinit var recyclerView: RecyclerView
+    private var currentSongs: List<AudioFile> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_playlist_songs)
 
         recyclerView = findViewById(R.id.recyclerView)
-
-        // val tag = intent.getStringExtra("tag") ?: return
-
-        // title = tag
 
         val playlistId = intent.getLongExtra("playlistId", -1L)
         if (playlistId == -1L) return
@@ -60,6 +60,7 @@ class PlaylistSongsActivity : AppCompatActivity() {
                         albumId = it.audio.albumId
                     )
                 }
+                currentSongs = audioFiles
 
                 recyclerView.adapter = AudioAdapter(
                     list = audioFiles,
@@ -83,30 +84,56 @@ class PlaylistSongsActivity : AppCompatActivity() {
                 ).show()
             }
 
-            // val audioFiles = result.map {
-            //     AudioFile(
-            //         id = it.audio.id,
-            //         title = it.audio.title,
-            //         artist = it.audio.artist,
-            //         uri = it.audio.uri,
-            //         albumId = it.audio.albumId
-            //     )
-            // }
-
             recyclerView.layoutManager = LinearLayoutManager(this@PlaylistSongsActivity)
 
-            // recyclerView.adapter = AudioAdapter(
-            //     list = audioFiles,
-            //     getAlbumArtUri = { albumId ->
-            //         ContentUris.withAppendedId(
-            //             Uri.parse("content://media/external/audio/albumart"),
-            //             albumId
-            //         )
-            //     },
-            //     onClick = { _, _ -> },
-            //     onAddToQueue = { },
-            //     onEditTag = { }
-            // )
         }
+    }
+
+    override fun onCreateOptionsMenu(
+        menu: Menu
+    ): Boolean {
+
+        menuInflater.inflate(
+            R.menu.menu_playlist_songs,
+            menu
+        )
+
+        return true
+    }
+
+    override fun onOptionsItemSelected(
+        item: MenuItem
+    ): Boolean {
+
+        when (item.itemId) {
+
+            R.id.action_add_queue -> {
+
+                val ids = currentSongs
+                    .map { it.id }
+                    .toLongArray()
+
+                val intent = Intent(
+                        this,
+                        MusicService::class.java
+                    )
+                intent.action = "ADD_LIST_TO_QUEUE"
+                intent.putExtra(
+                    "audioList",
+                    ArrayList(currentSongs)
+                )
+                startService(intent)
+
+                Toast.makeText(
+                    this,
+                    "キューに追加しました",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                return true
+            }
+        }
+
+        return super.onOptionsItemSelected(item)
     }
 }
