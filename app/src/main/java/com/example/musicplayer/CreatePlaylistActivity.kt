@@ -22,7 +22,6 @@ class CreatePlaylistActivity : AppCompatActivity() {
         repository = MusicRepository(dao)
         val nameEdit = findViewById<EditText>(R.id.playlistName)
         val container = findViewById<LinearLayout>(R.id.tagContainer)
-        val saveButton = findViewById<Button>(R.id.savePlaylist)
         val expressionStatus = findViewById<TextView>(R.id.expressionStatus)
         val expressionEdit = findViewById<EditText>(R.id.expressionEdit)
 
@@ -55,7 +54,6 @@ class CreatePlaylistActivity : AppCompatActivity() {
 
                         try {
                             val tokens = tokenize(text)
-
                             val evaluator = PlaylistEvaluator(
                                     tokens,
                                     emptyList()
@@ -78,57 +76,21 @@ class CreatePlaylistActivity : AppCompatActivity() {
                                 }
 
                             if (unknownTags.isNotEmpty()) {
-
-                                expressionStatus.setTextColor(
-                                    Color.YELLOW
-                                )
-
-                                expressionStatus.text =
-                                    "Unknown tag: ${
-                                        unknownTags.joinToString()
-                                    }"
-
+                                expressionStatus.setTextColor(Color.YELLOW)
+                                expressionStatus.text = "Unknown tag: ${unknownTags.joinToString()}"
                             } else {
-
-                                expressionStatus.setTextColor(
-                                    Color.GREEN
-                                )
-
-                                expressionStatus.text =
-                                    "✓ Valid expression"
+                                expressionStatus.setTextColor(Color.GREEN)
+                                expressionStatus.text = "✓ Valid expression"
                             }
 
                         } catch (
                             e: PlaylistSyntaxException
                         ) {
-
-                            expressionStatus.setTextColor(
-                                Color.RED
-                            )
-
-                            expressionStatus.text =
-                                e.message
+                            expressionStatus.setTextColor(Color.RED)
+                            expressionStatus.text = e.message
                         }
                     }
-
-                    // try {
-
-                    //     val tokens = tokenize(text)
-                    //     val evaluator = PlaylistEvaluator(
-                    //             tokens,
-                    //             emptyList()
-                    //         )
-
-                    //     evaluator.evaluate()
-                    //     expressionStatus.text = "✓ Valid expression"
-
-                    // } catch (
-                    //     e: PlaylistSyntaxException
-                    // ) {
-                    //     expressionStatus.text = e.message
-                    // }
                 }
-
                 override fun afterTextChanged(
                     s: Editable?
                 ) {}
@@ -141,15 +103,13 @@ class CreatePlaylistActivity : AppCompatActivity() {
             val checkBoxes = mutableListOf<CheckBox>()
 
             tags.forEach { tag ->
-
                 val checkBox = CheckBox(this@CreatePlaylistActivity)
                 checkBox.text = tag.name
-
                 container.addView(checkBox)
                 checkBoxes.add(checkBox)
             }
 
-            saveButton.setOnClickListener {
+            findViewById<Button>(R.id.savePlaylist).setOnClickListener {
 
                 lifecycleScope.launch {
 

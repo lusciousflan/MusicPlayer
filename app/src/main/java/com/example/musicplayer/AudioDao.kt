@@ -30,8 +30,6 @@ interface AudioDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(audioList: List<AudioEntity>)
 
-    // @Query("DELETE FROM audio WHERE id NOT IN (:ids)")
-    // suspend fun deleteMissing(ids: List<Long>)
     @Query("DELETE FROM audio")
     suspend fun deleteAll()
 

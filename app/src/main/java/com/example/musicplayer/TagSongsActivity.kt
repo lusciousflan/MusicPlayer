@@ -9,7 +9,6 @@ import kotlinx.coroutines.launch
 import android.net.Uri
 import android.content.ContentUris
 
-
 class TagSongsActivity : AppCompatActivity() {
 
     private lateinit var repository: MusicRepository
@@ -20,18 +19,14 @@ class TagSongsActivity : AppCompatActivity() {
         setContentView(R.layout.activity_tag_songs)
 
         recyclerView = findViewById(R.id.recyclerView)
-
         val tag = intent.getStringExtra("tag") ?: return
-
         title = tag
-
         val dao = (application as MyApp).database.audioDao()
         repository = MusicRepository(dao)
 
         lifecycleScope.launch {
 
             val songs = repository.getAudioByTag(tag)
-
             val audioFiles = songs.map {
                 AudioFile(
                     id = it.id,
@@ -42,9 +37,7 @@ class TagSongsActivity : AppCompatActivity() {
                 )
             }
 
-            recyclerView.layoutManager =
-                LinearLayoutManager(this@TagSongsActivity)
-
+            recyclerView.layoutManager = LinearLayoutManager(this@TagSongsActivity)
             recyclerView.adapter = AudioAdapter(
                 list = audioFiles,
                 getAlbumArtUri = { albumId ->

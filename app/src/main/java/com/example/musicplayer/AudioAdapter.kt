@@ -48,7 +48,6 @@ class AudioAdapter(
         holder.title.text = audio.title
         holder.artist.text = audio.artist
 
-        // val albumUri = getAlbumArtUri(audio.albumId)
         Glide.with(holder.itemView)
             .load(getAlbumArtUri(audio.albumId))
             .placeholder(R.drawable.default_art)
@@ -71,14 +70,6 @@ class AudioAdapter(
         holder.itemView.setOnClickListener {
             onClick(audio, position)
         }
-        // holder.itemView.setOnLongClickListener {
-        //     onAddToQueue(audio)
-        //     true
-        // }
-        // holder.itemView.setOnLongClickListener {
-        //     showTagDialog(it.context, audio.id, dao)
-        //     true
-        // }
         holder.itemView.setOnLongClickListener { view ->
             val popup = PopupMenu(view.context, view)
             popup.menu.add("キューに追加")
@@ -93,7 +84,6 @@ class AudioAdapter(
                     }
 
                     "タグ編集" -> {
-                        // showTagDialog(view.context, audio.id, dao)
                         onEditTag(audio)
                         true
                     }

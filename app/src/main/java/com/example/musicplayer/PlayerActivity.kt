@@ -15,9 +15,6 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import android.widget.SeekBar
 
-
-
-
 class PlayerActivity : AppCompatActivity() {
 
     private lateinit var title: TextView
@@ -25,7 +22,6 @@ class PlayerActivity : AppCompatActivity() {
     lateinit var albumArt: ImageView
     private lateinit var seekBar: SeekBar
     private lateinit var timeText: TextView
-
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -58,10 +54,8 @@ class PlayerActivity : AppCompatActivity() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val current = intent?.getIntExtra("current", 0) ?: 0
             val duration = intent?.getIntExtra("duration", 0) ?: 0
-
             seekBar.max = duration
             seekBar.progress = current
-
             timeText.text = "${formatTime(current)} / ${formatTime(duration)}"
         }
     }
@@ -76,7 +70,6 @@ class PlayerActivity : AppCompatActivity() {
         seekBar = findViewById(R.id.playerSeekBar)
         timeText = findViewById(R.id.playerTimeText)
 
-
         playPause.setOnClickListener {
             val intent = Intent(this, MusicService::class.java)
             intent.action = "TOGGLE_PLAY"
@@ -90,8 +83,8 @@ class PlayerActivity : AppCompatActivity() {
         findViewById<Button>(R.id.playerPrev).setOnClickListener {
             startService(Intent(this, MusicService::class.java).setAction("PREV"))
         }
-        seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
 
+        seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 if (fromUser) {
                     val intent = Intent(this@PlayerActivity, MusicService::class.java)
@@ -100,9 +93,7 @@ class PlayerActivity : AppCompatActivity() {
                     startService(intent)
                 }
             }
-
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
     }

@@ -1,7 +1,6 @@
 package com.example.musicplayer
 
 import androidx.appcompat.app.AppCompatActivity
-// import android.widget.ListView
 import android.os.Bundle
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
@@ -10,7 +9,6 @@ import android.content.Intent
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.appcompat.app.AlertDialog
-
 
 class PlaylistListActivity : AppCompatActivity() {
 
@@ -24,18 +22,15 @@ class PlaylistListActivity : AppCompatActivity() {
 
         recyclerView = findViewById(R.id.recyclerView)
         recyclerView.layoutManager = LinearLayoutManager(this)
-
         dao = (application as MyApp).database.audioDao()
         repository = MusicRepository(dao)
 
         loadLibrary()
-
     }
 
     private fun showDeletePlaylistDialog(
         playlist: PlaylistEntity
     ) {
-
         AlertDialog.Builder(this)
             .setTitle("プレイリスト削除")
             .setMessage(
@@ -52,16 +47,12 @@ class PlaylistListActivity : AppCompatActivity() {
     }
 
     private fun loadLibrary() {
-
         lifecycleScope.launch {
-
             val playlists = repository.getAllPlaylists()
             val tags = repository.getAllTags()
-
             val items = mutableListOf<LibraryItem>()
 
             items.add(LibraryItem.Header("プレイリスト"))
-
             items.add(LibraryItem.CreatePlaylist)
 
             playlists.forEach {

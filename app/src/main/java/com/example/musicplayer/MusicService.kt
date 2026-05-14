@@ -14,8 +14,6 @@ import android.graphics.BitmapFactory
 import android.content.ContentUris
 import android.util.Log
 
-
-
 class MusicService : Service() {
 
     private var mediaPlayer: MediaPlayer? = null
@@ -35,10 +33,8 @@ class MusicService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Toast.makeText(this, "hello!", Toast.LENGTH_SHORT).show()
 
         val uriString = intent?.getStringExtra("uri")
-
 
         when (intent?.action) {
             "PLAY" -> {
@@ -201,9 +197,7 @@ class MusicService : Service() {
             stopSelf()
             return
         }
-
         val audio = playQueue[currentIndex]
-
         currentTitle = audio.title
         currentAlbumId = audio.albumId
         sendNowPlaying()
@@ -225,7 +219,6 @@ class MusicService : Service() {
                 return
             }
         }
-
         playCurrent()
     }
 
@@ -244,7 +237,6 @@ class MusicService : Service() {
     private fun createNotification(): Notification {
 
         val channelId = "music_channel"
-
         val manager = getSystemService(NotificationManager::class.java)
         val channel = NotificationChannel(
             channelId,
@@ -260,6 +252,7 @@ class MusicService : Service() {
         val prevPending = PendingIntent.getService(
             this, 1, prevIntent, PendingIntent.FLAG_IMMUTABLE
         )
+
         // 次へ
         val nextIntent = Intent(this, MusicService::class.java).apply {
             action = "NEXT"
@@ -272,7 +265,6 @@ class MusicService : Service() {
         val playPauseIntent = Intent(this, MusicService::class.java).apply {
             action = "TOGGLE_PLAY"
         }
-
         val playPausePending = PendingIntent.getService(
             this, 3, playPauseIntent, PendingIntent.FLAG_IMMUTABLE
         )
@@ -320,13 +312,13 @@ class MusicService : Service() {
         return try {
             val uri = Uri.parse("content://media/external/audio/albumart")
             val artUri = ContentUris.withAppendedId(uri, albumId)
-
             val input = contentResolver.openInputStream(artUri)
             BitmapFactory.decodeStream(input)
         } catch (e: Exception) {
             null
         }
     }
+
     private fun sendNowPlaying() {
         val intent = Intent("NOW_PLAYING")
         intent.putExtra("title", currentTitle)

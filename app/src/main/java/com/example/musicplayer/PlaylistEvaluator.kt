@@ -1,12 +1,8 @@
 package com.example.musicplayer
 
-
-
 class PlaylistEvaluator(
-
     private val tokens: List<Token>,
     private val allAudio: List<AudioWithTags>
-
 ) {
 
     private var index = 0
@@ -15,35 +11,22 @@ class PlaylistEvaluator(
         return parseExpression()
     }
 
-    /*
-        low priority:
-        | + -
-     */
+    // low priority: | + -
     private fun parseExpression(): Set<AudioWithTags> {
-
         var current = parseTerm()
 
         while (index < tokens.size) {
-
             when (tokens[index]) {
 
                 Token.Plus,
                 Token.Or -> {
-
                     index++
-
-                    current =
-                        current union parseTerm()
+                    current = current union parseTerm()
                 }
-
                 Token.Minus -> {
-
                     index++
-
-                    current =
-                        current subtract parseTerm()
+                    current = current subtract parseTerm()
                 }
-
                 else -> return current
             }
         }
@@ -51,26 +34,17 @@ class PlaylistEvaluator(
         return current
     }
 
-    /*
-        high priority:
-        &
-     */
+    // high priority: &        
     private fun parseTerm(): Set<AudioWithTags> {
-
         var current = parseFactor()
 
         while (index < tokens.size) {
-
             when (tokens[index]) {
 
                 Token.And -> {
-
                     index++
-
-                    current =
-                        current intersect parseFactor()
+                    current = current intersect parseFactor()
                 }
-
                 else -> return current
             }
         }
@@ -78,12 +52,7 @@ class PlaylistEvaluator(
         return current
     }
 
-    /*
-        factor:
-        tag
-        not
-        (...)
-     */
+    // factor: tag, not, (...)        
     private fun parseFactor(): Set<AudioWithTags> {
 
         if (index >= tokens.size) {

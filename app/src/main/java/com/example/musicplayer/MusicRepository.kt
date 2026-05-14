@@ -4,18 +4,6 @@ class MusicRepository(private val dao: AudioDao) {
 
     var allAudio: List<AudioFile> = emptyList()
 
-    fun applyRule(list: List<AudioWithTags>, rule: PlaylistRule): List<AudioWithTags> {
-        return list.filter { audio ->
-
-            val tagNames = audio.tags.map { it.name }
-
-            val includeOK = rule.includeTags.all { it in tagNames }
-            val excludeOK = rule.excludeTags.none { it in tagNames }
-
-            includeOK && excludeOK
-        }
-    }
-
     suspend fun addTag(audioId: Long, tag: String) {
         val normalized = normalizeTag(tag)
 
@@ -43,7 +31,6 @@ class MusicRepository(private val dao: AudioDao) {
         name: String,
         expression: String
     ) {
-
         dao.insertPlaylist(
             PlaylistEntity(
                 name = name,
@@ -52,24 +39,6 @@ class MusicRepository(private val dao: AudioDao) {
         )
     }
 
-    suspend fun getPlaylistSongs(
-        playlist: PlaylistEntity
-    ): List<AudioWithTags> {
-
-        val all = dao.getAllAudioWithTags()
-
-        // 仮実装で最初のタグのみ採用する
-        val firstTag = parseTemporaryExpression(playlist.expression)
-
-        return all.filter { audio ->
-
-            val tags = audio.tags.map { it.name }
-            firstTag.all { it in tags }
-
-            // include.all { it in tags } &&
-            // exclude.none { it in tags }
-        }
-    }
     suspend fun getAllPlaylists(): List<PlaylistEntity> {
         return dao.getAllPlaylists()
     }

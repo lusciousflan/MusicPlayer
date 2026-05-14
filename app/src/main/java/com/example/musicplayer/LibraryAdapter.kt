@@ -38,7 +38,6 @@ class LibraryAdapter(
         when (val item = items[position]) {
 
             is LibraryItem.Header -> {
-
                 holder.text.text = item.title
                 holder.text.textSize = 12f
                 holder.text.setTextColor(
@@ -50,9 +49,7 @@ class LibraryAdapter(
             }
 
             is LibraryItem.Playlist -> {
-
                 holder.text.text = item.playlist.name
-
                 holder.text.textSize = 18f
                 holder.text.setTextColor(
                     android.graphics.Color.BLACK
@@ -70,9 +67,7 @@ class LibraryAdapter(
             }
 
             is LibraryItem.Tag -> {
-
                 holder.text.text = item.tag.name
-
                 holder.text.textSize = 18f
                 holder.text.setTextColor(
                     android.graphics.Color.BLACK
@@ -84,10 +79,8 @@ class LibraryAdapter(
                 }
             }
             is LibraryItem.CreatePlaylist -> {
-
                 holder.text.text = "＋ プレイリスト作成"
                 holder.text.textSize = 18f
-
                 holder.itemView.setOnClickListener {
                     holder.itemView.context.startActivity(
                         Intent(

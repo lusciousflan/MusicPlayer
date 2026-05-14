@@ -8,7 +8,6 @@ import android.net.Uri
 import android.content.Intent
 import android.content.ContentUris
 
-
 class QueueActivity : AppCompatActivity() {
 
     private lateinit var recyclerView: RecyclerView

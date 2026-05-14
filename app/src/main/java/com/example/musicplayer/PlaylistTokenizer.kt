@@ -2,9 +2,7 @@ package com.example.musicplayer
 
 fun tokenize(input: String): List<Token> {
 
-    val normalized =
-
-        input
+    val normalized = input
             .replace("(", " ( ")
             .replace(")", " ) ")
             .replace("&", " & ")
@@ -13,8 +11,7 @@ fun tokenize(input: String): List<Token> {
             .replace("-", " - ")
             .replace("!", " ! ")
 
-    val parts =
-        normalized
+    val parts = normalized
             .split(Regex("\\s+"))
             .filter { it.isNotBlank() }
 

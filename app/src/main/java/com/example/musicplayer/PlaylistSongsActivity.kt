@@ -13,7 +13,6 @@ import android.view.Menu
 import android.view.MenuItem
 import android.content.Intent
 
-
 class PlaylistSongsActivity : AppCompatActivity() {
 
     private lateinit var repository: MusicRepository
@@ -35,22 +34,16 @@ class PlaylistSongsActivity : AppCompatActivity() {
         lifecycleScope.launch {
 
             val playlist = repository.getPlaylistById(playlistId)
-
             title = playlist.name
-
             val allAudio = repository.getAllAudioWithTags()
-
             val tokens = tokenize(playlist.expression)
 
             try {
-
                 val evaluator = PlaylistEvaluator(
                         tokens,
                         allAudio
                     )
-
                 val result = evaluator.evaluate()
-
                 val audioFiles = result.map {
                     AudioFile(
                         id = it.audio.id,
@@ -83,30 +76,24 @@ class PlaylistSongsActivity : AppCompatActivity() {
                     Toast.LENGTH_LONG
                 ).show()
             }
-
             recyclerView.layoutManager = LinearLayoutManager(this@PlaylistSongsActivity)
-
         }
     }
 
     override fun onCreateOptionsMenu(
         menu: Menu
     ): Boolean {
-
         menuInflater.inflate(
             R.menu.menu_playlist_songs,
             menu
         )
-
         return true
     }
 
     override fun onOptionsItemSelected(
         item: MenuItem
     ): Boolean {
-
         when (item.itemId) {
-
             R.id.action_add_queue -> {
 
                 val ids = currentSongs

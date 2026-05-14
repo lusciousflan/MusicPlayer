@@ -3,43 +3,39 @@ package com.example.musicplayer
 import android.Manifest
 import android.content.ContentUris
 import android.content.pm.PackageManager
+import android.content.Intent
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
+import android.content.Context
 import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import android.widget.LinearLayout
+import android.widget.EditText
 import android.widget.Toast
+import android.widget.Button
+import android.widget.SeekBar
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import android.widget.Button
-import android.widget.SeekBar
-import android.widget.TextView
-import android.content.Intent
-import android.content.BroadcastReceiver
-import android.content.IntentFilter
-import android.content.Context
-import android.widget.LinearLayout
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
-import android.widget.EditText
-import androidx.appcompat.app.AlertDialog
 
 class MainActivity : AppCompatActivity() {
 
     private var mediaPlayer: MediaPlayer? = null
     private var audioList: List<AudioFile> = emptyList()
-    // private var isPlaying = false
-    // private var currentAudio: AudioFile? = null
     private lateinit var playPauseButton: Button
     private lateinit var nextButton: Button
     private lateinit var prevButton: Button
-    private var currentIndex = -1
     private lateinit var seekBar: SeekBar
-    private val handler = android.os.Handler()
     private lateinit var timeText: TextView
     private lateinit var adapter: AudioAdapter
     private lateinit var repeatButton: Button
@@ -52,10 +48,8 @@ class MainActivity : AppCompatActivity() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val current = intent?.getIntExtra("current", 0) ?: 0
             val duration = intent?.getIntExtra("duration", 0) ?: 0
-
             seekBar.max = duration
             seekBar.progress = current
-
             timeText.text = "${formatTime(current)} / ${formatTime(duration)}"
         }
     }
@@ -117,11 +111,9 @@ class MainActivity : AppCompatActivity() {
         prevButton = findViewById(R.id.prevButton)
         seekBar = findViewById(R.id.seekBar)
         timeText = findViewById(R.id.timeText)
-        val queueButton = findViewById<Button>(R.id.queueButton)
         repeatButton = findViewById(R.id.repeatButton)
         shuffleButton = findViewById(R.id.shuffleButton)
         miniTitle = findViewById(R.id.miniTitle)
-        val miniPlayer = findViewById<LinearLayout>(R.id.miniPlayer)
 
         val dao = (application as MyApp).database.audioDao()
         repository = MusicRepository(dao)
@@ -129,18 +121,10 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             syncMediaStore(this@MainActivity, dao)
         }
-
-        miniPlayer.setOnClickListener {
+        findViewById<LinearLayout>(R.id.miniPlayer).setOnClickListener {
             startActivity(Intent(this, PlayerActivity::class.java))
         }
-
         playPauseButton.setOnClickListener {
-
-            // if (currentAudio == null) {
-            //     Toast.makeText(this, "曲を選択してください", Toast.LENGTH_SHORT).show()
-            //     return@setOnClickListener
-            // }
-
             val intent = Intent(this, MusicService::class.java)
             intent.action = "TOGGLE_PLAY"
             startService(intent)
@@ -156,7 +140,6 @@ class MainActivity : AppCompatActivity() {
             startService(intent)
         }
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 if (fromUser) {
                     val intent = Intent(this@MainActivity, MusicService::class.java)
@@ -165,12 +148,10 @@ class MainActivity : AppCompatActivity() {
                     startService(intent)
                 }
             }
-
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
-        queueButton.setOnClickListener {
+        findViewById<Button>(R.id.queueButton).setOnClickListener {
             val intent = Intent(this, QueueActivity::class.java)
             startActivity(intent)
         }
@@ -228,11 +209,7 @@ class MainActivity : AppCompatActivity() {
                 val intent = Intent(this, MusicService::class.java)
                 intent.action = "PLAY"
                 intent.putExtra("audio", audio)
-                // Toast.makeText(this, "タップされました", Toast.LENGTH_SHORT).show()
-
                 startService(intent)
-
-                currentIndex = position
                 adapter.setCurrentPlaying(position)
             },
             onAddToQueue = { audio ->
@@ -283,14 +260,6 @@ class MainActivity : AppCompatActivity() {
         return list
     }
 
-    // private fun getAlbumArtUri(albumId: Long): Uri {
-    //     return ContentUris.withAppendedId(
-    //         Uri.parse("content://media/external/audio/albumart"),
-    //         albumId
-    //     )
-    // }
-
-
     private fun formatTime(ms: Int): String {
         val totalSeconds = ms / 1000
         val minutes = totalSeconds / 60
@@ -315,7 +284,6 @@ class MainActivity : AppCompatActivity() {
         } else {
             Manifest.permission.READ_EXTERNAL_STORAGE
         }
-
         ActivityCompat.requestPermissions(this, arrayOf(permission), 1)
     }
 
@@ -338,7 +306,6 @@ class MainActivity : AppCompatActivity() {
     private fun showTagDialog(audio: AudioFile) {
 
         lifecycleScope.launch {
-
             val currentTags = repository.getTags(audio.id)
             val items = currentTags.toMutableList()
             items.add("＋ タグを追加する")
@@ -346,9 +313,7 @@ class MainActivity : AppCompatActivity() {
             AlertDialog.Builder(this@MainActivity)
                 .setTitle("タグ編集")
                 .setItems(items.toTypedArray()) { _, which ->
-
                     val selected = items[which]
-
                     if (selected == "＋ タグを追加する") {
                         showAddTagDialog(audio)
                     } else {
@@ -362,7 +327,6 @@ class MainActivity : AppCompatActivity() {
     private fun showAddTagDialog(audio: AudioFile) {
 
         lifecycleScope.launch {
-
             val tags = repository.getAllTags()
             val items = tags.map { it.name }.toMutableList()
             items.add("＋ タグを追加する")
@@ -370,15 +334,10 @@ class MainActivity : AppCompatActivity() {
             AlertDialog.Builder(this@MainActivity)
                 .setTitle("タグを選択")
                 .setItems(items.toTypedArray()) { _, which ->
-
                     val selected = items[which]
-
                     if (selected == "＋ タグを追加する") {
-
                         showCreateTagDialog(audio)
-
                     } else {
-
                         lifecycleScope.launch {
                             repository.addTag(audio.id, selected)
                         }
@@ -396,11 +355,8 @@ class MainActivity : AppCompatActivity() {
             .setTitle("新しいタグ")
             .setView(editText)
             .setPositiveButton("追加") { _, _ ->
-
                 val tag = editText.text.toString()
-
                 if (tag.isBlank()) return@setPositiveButton
-
                 lifecycleScope.launch {
                     repository.addTag(audio.id, tag)
                 }
@@ -410,27 +366,21 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showRemoveTagDialog(audio: AudioFile, tag: String) {
-
         AlertDialog.Builder(this)
             .setTitle("タグ削除")
             .setMessage("タグ「$tag」を削除しますか？")
-
             .setPositiveButton("削除") { _, _ ->
-
                 lifecycleScope.launch {
                     repository.removeTag(audio.id, tag)
                 }
             }
-
             .setNegativeButton("キャンセル", null)
-
             .show()
     }
 
     suspend fun getTags(audioId: Long, dao: AudioDao): List<String> {
         return dao.getTagsForAudio(audioId)
     }
-    
 
     override fun onDestroy() {
         super.onDestroy()
