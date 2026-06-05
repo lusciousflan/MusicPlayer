@@ -43,8 +43,9 @@ class MusicService : Service() {
                     Toast.makeText(this, "再生します", Toast.LENGTH_SHORT).show()
                     // キューのリセット
                     playQueue.clear()
-                    playQueue.add(audio)
-                    currentIndex = 0
+                    // currentIndex = 0
+                    // playQueue.add(audio)
+                    addToQueue(audio)
                     // 再生ボタンの見た目切り替えメッセージの送信
                     val intent = Intent("PLAYING_STATE_CHANGED")
                     intent.putExtra("isPlaying", isPlaying)

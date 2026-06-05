@@ -27,6 +27,7 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
+import com.google.android.material.tabs.TabLayout
 
 class MainActivity : AppCompatActivity() {
 
@@ -42,6 +43,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var shuffleButton: Button
     lateinit var miniTitle: TextView
     private lateinit var repository: MusicRepository
+    private lateinit var recyclerView: RecyclerView
+    private var libraryItems: List<LibraryItem> = emptyList()
 
     // シークバーの状態を更新
     private val progressReceiver = object : BroadcastReceiver() {
@@ -168,9 +171,27 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.tagButton).setOnClickListener {
             startActivity(Intent(this, TagListActivity::class.java))
         }
-        findViewById<Button>(R.id.playlistButton).setOnClickListener {
-            startActivity(Intent(this, PlaylistListActivity::class.java))
-        }
+        // findViewById<Button>(R.id.playlistButton).setOnClickListener {
+        //     startActivity(Intent(this, PlaylistListActivity::class.java))
+        // }
+
+        val tabLayout = findViewById<com.google.android.material.tabs.TabLayout>(R.id.tabLayout)
+        tabLayout.addTab(tabLayout.newTab().setText("楽曲"))
+        tabLayout.addTab(tabLayout.newTab().setText("ライブラリ"))
+        tabLayout.addOnTabSelectedListener(
+            object : com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
+                override fun onTabSelected(
+                    tab: com.google.android.material.tabs.TabLayout.Tab
+                ) {
+                    when (tab.position) {
+                        0 -> showSongs()
+                        1 -> showLibrary()
+                    }
+                }
+                override fun onTabUnselected(tab: TabLayout.Tab) {}
+                override fun onTabReselected(tab: TabLayout.Tab) {}
+            }
+        )
     }
 
     override fun onResume() {
@@ -194,7 +215,7 @@ class MainActivity : AppCompatActivity() {
     private fun setupRecycler() {
         audioList = getAudioFiles()
 
-        val recyclerView = findViewById<RecyclerView>(R.id.recyclerView)
+        recyclerView = findViewById(R.id.recyclerView)
         recyclerView.layoutManager = LinearLayoutManager(this)
 
         adapter = AudioAdapter(
@@ -223,6 +244,7 @@ class MainActivity : AppCompatActivity() {
             }
             )
         recyclerView.adapter = adapter
+        showSongs()
     }
 
     private fun getAudioFiles(): List<AudioFile> {
@@ -380,6 +402,61 @@ class MainActivity : AppCompatActivity() {
 
     suspend fun getTags(audioId: Long, dao: AudioDao): List<String> {
         return dao.getTagsForAudio(audioId)
+    }
+
+    private fun showSongs() {
+        recyclerView.adapter = adapter
+    }
+
+    private fun showLibrary() {
+        lifecycleScope.launch {
+            val dao = (application as MyApp).database.audioDao()
+            val playlists = dao.getAllPlaylists()
+            val tags = dao.getAllTags()
+            val items = mutableListOf<LibraryItem>()
+
+            items.add(LibraryItem.Header("プレイリスト"))
+            items.addAll(playlists.map {
+                LibraryItem.Playlist(it)
+            })
+
+            items.add(LibraryItem.Header("タグ"))
+            items.addAll(tags.map {
+                LibraryItem.Tag(it)
+            })
+
+            recyclerView.adapter = LibraryAdapter(
+                    items,
+                    onPlaylistClick = { playlist ->
+                        val intent = Intent(
+                                this@MainActivity,
+                                PlaylistSongsActivity::class.java
+                            )
+                        intent.putExtra(
+                            "playlistId",
+                            playlist.id
+                        )
+                        startActivity(intent)
+                    },
+
+                    onTagClick = { tag ->
+                        val intent = Intent(
+                                this@MainActivity,
+                                TagSongsActivity::class.java
+                            )
+                        intent.putExtra(
+                            "tag",
+                            tag.name
+                        )
+                        startActivity(intent)
+                    },
+
+                    onPlaylistLongClick = { playlist ->
+
+                        // 後で削除ダイアログ
+                    }
+                )
+        }
     }
 
     override fun onDestroy() {
