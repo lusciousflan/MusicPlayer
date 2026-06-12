@@ -104,7 +104,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         if (checkPermission()) {
-            setupRecycler()
+            // setupRecycler()
         } else {
             requestPermission()
         }
@@ -192,6 +192,12 @@ class MainActivity : AppCompatActivity() {
                 override fun onTabReselected(tab: TabLayout.Tab) {}
             }
         )
+        supportFragmentManager.beginTransaction()
+            .replace(
+                R.id.libraryContainer,
+                SongsFragment()
+            )
+            .commit()
     }
 
     override fun onResume() {
@@ -247,7 +253,7 @@ class MainActivity : AppCompatActivity() {
         showSongs()
     }
 
-    private fun getAudioFiles(): List<AudioFile> {
+    fun getAudioFiles(): List<AudioFile> {
         val list = mutableListOf<AudioFile>()
         val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
 
@@ -319,13 +325,13 @@ class MainActivity : AppCompatActivity() {
             grantResults.isNotEmpty() &&
             grantResults[0] == PackageManager.PERMISSION_GRANTED
         ) {
-            setupRecycler()
+            // setupRecycler()
         } else {
             Toast.makeText(this, "権限が必要です", Toast.LENGTH_SHORT).show()
         }
     }
 
-    private fun showTagDialog(audio: AudioFile) {
+    fun showTagDialog(audio: AudioFile) {
 
         lifecycleScope.launch {
             val currentTags = repository.getTags(audio.id)
@@ -405,58 +411,21 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showSongs() {
-        recyclerView.adapter = adapter
+        supportFragmentManager.beginTransaction()
+            .replace(
+                R.id.libraryContainer,
+                SongsFragment()
+            )
+            .commit()
     }
 
     private fun showLibrary() {
-        lifecycleScope.launch {
-            val dao = (application as MyApp).database.audioDao()
-            val playlists = dao.getAllPlaylists()
-            val tags = dao.getAllTags()
-            val items = mutableListOf<LibraryItem>()
-
-            items.add(LibraryItem.Header("プレイリスト"))
-            items.addAll(playlists.map {
-                LibraryItem.Playlist(it)
-            })
-
-            items.add(LibraryItem.Header("タグ"))
-            items.addAll(tags.map {
-                LibraryItem.Tag(it)
-            })
-
-            recyclerView.adapter = LibraryAdapter(
-                    items,
-                    onPlaylistClick = { playlist ->
-                        val intent = Intent(
-                                this@MainActivity,
-                                PlaylistSongsActivity::class.java
-                            )
-                        intent.putExtra(
-                            "playlistId",
-                            playlist.id
-                        )
-                        startActivity(intent)
-                    },
-
-                    onTagClick = { tag ->
-                        val intent = Intent(
-                                this@MainActivity,
-                                TagSongsActivity::class.java
-                            )
-                        intent.putExtra(
-                            "tag",
-                            tag.name
-                        )
-                        startActivity(intent)
-                    },
-
-                    onPlaylistLongClick = { playlist ->
-
-                        // 後で削除ダイアログ
-                    }
-                )
-        }
+        supportFragmentManager.beginTransaction()
+            .replace(
+                R.id.libraryContainer,
+                LibraryFragment()
+            )
+            .commit()
     }
 
     override fun onDestroy() {

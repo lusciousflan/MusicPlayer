@@ -1,53 +1,34 @@
 package com.example.musicplayer
 
-import androidx.appcompat.app.AppCompatActivity
-import android.os.Bundle
-import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.launch
-import android.widget.ArrayAdapter
 import android.content.Intent
-import androidx.recyclerview.widget.RecyclerView
+import android.os.Bundle
+import android.view.View
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import androidx.appcompat.app.AlertDialog
+import kotlinx.coroutines.launch
 
-class PlaylistListActivity : AppCompatActivity() {
-
+class LibraryFragment : Fragment(R.layout.fragment_library) {
     private lateinit var repository: MusicRepository
     private lateinit var recyclerView: RecyclerView
     private lateinit var dao: AudioDao
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_playlist_list)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
 
-        recyclerView = findViewById(R.id.recyclerView)
-        recyclerView.layoutManager = LinearLayoutManager(this)
-        dao = (application as MyApp).database.audioDao()
+        recyclerView = view.findViewById(R.id.recyclerView)
+        recyclerView.layoutManager = LinearLayoutManager(requireContext())
+
+        dao = (requireActivity().application as MyApp).database.audioDao()
         repository = MusicRepository(dao)
 
-        loadLibrary()
-    }
-
-    private fun showDeletePlaylistDialog(
-        playlist: PlaylistEntity
-    ) {
-        AlertDialog.Builder(this)
-            .setTitle("プレイリスト削除")
-            .setMessage(
-                "「${playlist.name}」を削除しますか？"
-            )
-            .setPositiveButton("削除") { _, _ ->
-                lifecycleScope.launch {
-                    dao.deletePlaylist(playlist)
-                    loadLibrary()
-                }
-            }
-            .setNegativeButton("キャンセル", null)
-            .show()
+        // loadLibrary()
     }
 
     private fun loadLibrary() {
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             val playlists = repository.getAllPlaylists()
             val tags = repository.getAllTags()
             val items = mutableListOf<LibraryItem>()
@@ -69,7 +50,7 @@ class PlaylistListActivity : AppCompatActivity() {
                 items,
                 onPlaylistClick = { playlist ->
                     val intent = Intent(
-                        this@PlaylistListActivity,
+                        requireContext(),
                         PlaylistSongsActivity::class.java
                     )
                     intent.putExtra("playlistId", playlist.id)
@@ -78,7 +59,7 @@ class PlaylistListActivity : AppCompatActivity() {
 
                 onTagClick = { tag ->
                     val intent = Intent(
-                        this@PlaylistListActivity,
+                        requireContext(),
                         TagSongsActivity::class.java
                     )
                     intent.putExtra("tag", tag.name)
@@ -94,9 +75,25 @@ class PlaylistListActivity : AppCompatActivity() {
         }
     }
     
+    private fun showDeletePlaylistDialog(playlist: PlaylistEntity) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("プレイリスト削除")
+            .setMessage(
+                "「${playlist.name}」を削除しますか？"
+            )
+            .setPositiveButton("削除") { _, _ ->
+                viewLifecycleOwner.lifecycleScope.launch {
+                    dao.deletePlaylist(playlist)
+                    loadLibrary()
+                }
+            }
+            .setNegativeButton("キャンセル", null)
+            .show()
+    }
+
     override fun onResume() {
         super.onResume()
-
         loadLibrary()
     }
+
 }

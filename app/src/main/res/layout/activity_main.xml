@@ -9,17 +9,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <!-- <com.google.android.material.tabs.TabLayout
-            android:id="@+id/tabLayout"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"/>
-
-        <androidx.viewpager2.widget.ViewPager2
-            android:id="@+id/viewPager"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"/> -->
-
         <Button
             android:id="@+id/queueButton"
             android:layout_width="wrap_content"
@@ -31,12 +20,6 @@
             android:text="タグ一覧"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"/>
-
-        <!-- <Button
-            android:id="@+id/playlistButton"
-            android:text="プレイリスト一覧"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/> -->
 
         <Button
             android:id="@+id/repeatButton"
@@ -56,11 +39,17 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerView"
+    <FrameLayout
+        android:id="@+id/libraryContainer"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"/>
+
+    <!-- <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"/> -->
 
     <LinearLayout
         android:id="@+id/miniPlayer"
