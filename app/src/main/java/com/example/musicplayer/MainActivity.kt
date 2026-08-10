@@ -12,6 +12,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import android.util.Log
 import android.widget.LinearLayout
 import android.widget.EditText
 import android.widget.Toast
@@ -28,6 +29,7 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import com.google.android.material.tabs.TabLayout
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -54,6 +56,10 @@ class MainActivity : AppCompatActivity() {
             seekBar.max = duration
             seekBar.progress = current
             timeText.text = "${formatTime(current)} / ${formatTime(duration)}"
+            Log.d(
+                "MainActivity",
+                "progress=$current duration=$duration"
+            )
         }
     }
     

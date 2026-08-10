@@ -2,7 +2,12 @@ package com.example.musicplayer
 
 import android.app.*
 import android.content.Intent
-import android.media.MediaPlayer
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.session.MediaSessionService
+import androidx.media3.session.MediaSession
+import android.content.Context
 import android.net.Uri
 import android.os.IBinder
 import android.os.Handler
@@ -14,53 +19,93 @@ import android.graphics.BitmapFactory
 import android.content.ContentUris
 import android.util.Log
 
-class MusicService : Service() {
-
-    private var mediaPlayer: MediaPlayer? = null
+class MusicService : MediaSessionService() {
+    private lateinit var player: ExoPlayer
+    private var mediaSession: MediaSession? = null
     private val handler = Handler(Looper.getMainLooper())
     private var currentTitle: String = "Unknown"
     private var currentArtist: String = ""
     private var isPlaying = false
     private var currentAlbumId: Long = -1
-    private var currentIndex = -1
     var isRepeatAll = true
     var isShuffle = false
+    private val audioMap = mutableMapOf<String, AudioFile>()
+    private var progressRunnable: Runnable? = null
 
     companion object {
-        var playQueue: MutableList<AudioFile> = mutableListOf()
+        var player: ExoPlayer? = null
+        fun getQueue(): List<AudioFile> {
+            val p = player ?: return emptyList()
+            return (0 until p.mediaItemCount).mapNotNull {
+                index -> p.getMediaItemAt(index).localConfiguration?.tag as? AudioFile
+            }
+        }
     }
 
-    override fun onBind(intent: Intent?): IBinder? = null
+    override fun onCreate() {
+        super.onCreate()
+
+        player = ExoPlayer.Builder(this).build()
+        MusicService.player = player
+        mediaSession = MediaSession.Builder(this, player).build()
+        player.addListener(
+            object : Player.Listener {
+                override fun onIsPlayingChanged(playing: Boolean) {
+                    isPlaying = playing
+                    val intent = Intent("PLAYING_STATE_CHANGED")
+                    intent.putExtra("isPlaying", playing)
+                    sendBroadcast(intent)
+                    updateNotification()
+                }
+                override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                    val audio = audioMap[mediaItem?.mediaId]
+                    currentTitle = audio?.title ?: ""
+                    currentArtist = audio?.artist ?: ""
+                    currentAlbumId = audio?.albumId ?: -1
+                    sendNowPlaying()
+                }
+            }
+        )
+    }
+
+    override fun onBind(intent: Intent?): IBinder? = super.onBind(intent)
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-
-        val uriString = intent?.getStringExtra("uri")
+        Log.d(
+            "MusicService",
+            "onStartCommand action=${intent?.action}"
+        )
 
         when (intent?.action) {
             "PLAY" -> {
                 val audio = intent.getSerializableExtra("audio") as? AudioFile
                 if (audio != null) {
                     Toast.makeText(this, "再生します", Toast.LENGTH_SHORT).show()
+                    audioMap[audio.id.toString()] = audio
+                    currentTitle = audio.title
+                    currentArtist = audio.artist
+                    currentAlbumId = audio.albumId
                     // キューのリセット
-                    playQueue.clear()
-                    // currentIndex = 0
-                    // playQueue.add(audio)
-                    addToQueue(audio)
+                    player.clearMediaItems()
+                    player.setMediaItem(audio.toMediaItem())
                     // 再生ボタンの見た目切り替えメッセージの送信
                     val intent = Intent("PLAYING_STATE_CHANGED")
                     intent.putExtra("isPlaying", isPlaying)
                     sendBroadcast(intent)
                     sendNowPlaying()
                     // 再生
-                    playCurrent()
+                    player.prepare()
+                    player.play()
+                    startForeground(1, createNotification())
+                    startProgressUpdates()
                 }
             }
             "TOGGLE_PLAY" -> {
                 if (isPlaying) {
-                    mediaPlayer?.pause()
+                    player.pause()
                     isPlaying = false
                 } else {
-                    mediaPlayer?.start()
+                    player.play()
                     isPlaying = true
                 }
                 updateNotification()
@@ -71,14 +116,14 @@ class MusicService : Service() {
                 sendNowPlaying()
             }
             "STOP" -> {
-                mediaPlayer?.stop()
-                mediaPlayer?.release()
-                mediaPlayer = null
+                player.stop()
             }
             "ADD_TO_QUEUE" -> {
                 val audio = intent.getSerializableExtra("audio") as AudioFile
                 if (audio != null) {
-                    val alreadyExists = playQueue.any { it.uri == audio.uri }
+                    val alreadyExists = (0 until player.mediaItemCount).any { index ->
+                        player.getMediaItemAt(index).mediaId == audio.id.toString()
+                        }
                     if (!alreadyExists) {
                         addToQueue(audio)
                     } else {
@@ -92,8 +137,8 @@ class MusicService : Service() {
                     ) as? ArrayList<AudioFile>
 
                 audios?.forEach { audio ->
-                    val alreadyExists = playQueue.any {
-                            it.uri == audio.uri
+                    val alreadyExists = (0 until player.mediaItemCount).any { 
+                        index -> player.getMediaItemAt(index).mediaId == audio.id.toString()
                         }
                     if (!alreadyExists) {
                         addToQueue(audio)
@@ -104,10 +149,13 @@ class MusicService : Service() {
             "PREV" -> playPrev()
             "SEEK" -> {
                 val position = intent.getIntExtra("position", 0)
-                mediaPlayer?.seekTo(position)
+                player.seekTo(position.toLong())
             }
             "TOGGLE_REPEAT" -> {
-                isRepeatAll = !isRepeatAll
+                player.repeatMode =
+                    if (player.repeatMode == Player.REPEAT_MODE_ALL) Player.REPEAT_MODE_OFF
+                    else Player.REPEAT_MODE_ALL
+                isRepeatAll = player.repeatMode == Player.REPEAT_MODE_ALL
                 Toast.makeText(this, 
                     if (isRepeatAll) "リピートON" else "リピートOFF",
                     Toast.LENGTH_SHORT
@@ -117,122 +165,47 @@ class MusicService : Service() {
                 sendBroadcast(intent)
             }
             "TOGGLE_SHUFFLE" -> {
-                isShuffle = !isShuffle
+                player.shuffleModeEnabled = !player.shuffleModeEnabled
+                isShuffle = player.shuffleModeEnabled
                 Toast.makeText(this, 
                     if (isShuffle) "シャッフルON" else "シャッフルOFF",
                     Toast.LENGTH_SHORT
                 ).show()
-
-                if (isShuffle) {
-                    shuffleQueue()
-                }
-
                 val intent = Intent("SHUFFLE_STATE_CHANGED")
                 intent.putExtra("isShuffle", isShuffle)
                 sendBroadcast(intent)
             }
             "REQUEST_STATE" -> {
                 sendNowPlaying()
+                sendBroadcast(Intent("PLAYING_STATE_CHANGED").putExtra("isPlaying", player.isPlaying))
+            }
+            "PLAY_INDEX" -> {
+                val index = intent.getIntExtra("index", 0)
+                player.seekTo(index, 0)
+                player.play()
             }
         }
 
         return START_STICKY
     }
 
-    private fun play(uri: Uri) {
-        mediaPlayer?.release()
-        isPlaying = true
-
-        mediaPlayer = MediaPlayer().apply {
-            setDataSource(applicationContext, uri)
-            prepare()
-
-            setOnCompletionListener {
-                playNext()
-            }
-
-            setOnErrorListener { _, _, _ ->
-                playNext()
-                true
-            }
-            start()
-        }
-
-        startForeground(1, createNotification())
-        startProgressUpdates()
-    }
-
     fun addToQueue(audio: AudioFile) {
-        playQueue.add(audio)
+        audioMap[audio.id.toString()] = audio
+        player.addMediaItem(audio.toMediaItem())
 
         // 初回だけ再生開始
-        if (currentIndex == -1) {
-            currentIndex = 0
-            playCurrent()
+        if (player.mediaItemCount == 1) {
+            player.prepare()
+            player.play()
         }
-    }
-
-    private fun shuffleQueue() {
-        if (playQueue.isEmpty()) return
-
-        // 再生中の曲を保持
-        val current = playQueue.getOrNull(currentIndex) ?: return
-
-        // 現在の曲以外を取り出す
-        val others = playQueue.filterIndexed { index, _ -> index != currentIndex }.toMutableList()
-
-        // シャッフル
-        others.shuffle()
-
-        // 新しいキュー作成（先頭に現在の曲）
-        playQueue.clear()
-        playQueue.add(current)
-        playQueue.addAll(others)
-
-        // インデックスをリセット
-        currentIndex = 0
-    }
-
-    private fun playCurrent() {
-        if (currentIndex !in playQueue.indices) {
-            stopSelf()
-            return
-        }
-        val audio = playQueue[currentIndex]
-        currentTitle = audio.title
-        currentAlbumId = audio.albumId
-        sendNowPlaying()
-
-        play(Uri.parse(audio.uri))
     }
 
     private fun playNext() {
-        currentIndex++
-
-        // キューの最後まで再生したとき
-        if (currentIndex >= playQueue.size) {
-            if (isRepeatAll) {
-                // 先頭に戻る
-                currentIndex = 0
-            } else {
-                // 止める
-                stopSelf()
-                return
-            }
-        }
-        playCurrent()
+        player.seekToNextMediaItem()
     }
 
     private fun playPrev() {
-        if (playQueue.isEmpty()) return
-
-        currentIndex--
-
-        if (currentIndex < 0) {
-            currentIndex = 0
-        }
-
-        playCurrent()
+        player.seekToPreviousMediaItem()
     }
 
     private fun createNotification(): Notification {
@@ -270,10 +243,9 @@ class MusicService : Service() {
             this, 3, playPauseIntent, PendingIntent.FLAG_IMMUTABLE
         )
 
-        val icon = if (isPlaying)
-            android.R.drawable.ic_media_pause
-        else
-            android.R.drawable.ic_media_play
+        val icon = 
+            if (isPlaying) android.R.drawable.ic_media_pause
+            else android.R.drawable.ic_media_play
 
         val text = if (isPlaying) "Pause" else "Play"
 
@@ -290,24 +262,32 @@ class MusicService : Service() {
     }
 
     private fun updateNotification() {
-        val notification = createNotification()
         val manager = getSystemService(NotificationManager::class.java)
-        manager.notify(1, notification)
+        manager.notify(1, createNotification())
     }
 
     private fun startProgressUpdates() {
-        handler.post(object : Runnable {
+        progressRunnable?.let {
+            handler.removeCallbacks(it)
+        }
+        progressRunnable = object : Runnable {
             override fun run() {
-                mediaPlayer?.let {
+                Log.d(
+                    "MusicService",
+                    "progress=${player.currentPosition} duration=${player.duration}"
+                )
+                if (player.isPlaying || player.playbackState != Player.STATE_IDLE) {
                     val intent = Intent("MUSIC_PROGRESS")
-                    intent.putExtra("current", it.currentPosition)
-                    intent.putExtra("duration", it.duration)
+                    intent.putExtra("current", player.currentPosition.toInt())
+                    intent.putExtra("duration", player.duration.toInt())
                     sendBroadcast(intent)
                 }
                 handler.postDelayed(this, 500)
             }
-        })
+        }
+        handler.post(progressRunnable!!)
     }
+
 
     private fun getAlbumArt(albumId: Long): Bitmap? {
         return try {
@@ -323,13 +303,43 @@ class MusicService : Service() {
     private fun sendNowPlaying() {
         val intent = Intent("NOW_PLAYING")
         intent.putExtra("title", currentTitle)
+        intent.putExtra("artist", currentArtist)
         intent.putExtra("albumId", currentAlbumId)
         sendBroadcast(intent)
     }
 
+    private fun AudioFile.toMediaItem(): MediaItem {
+        return MediaItem.Builder()
+            .setUri(uri)
+            .setMediaId(id.toString())
+            .setTag(this)
+            .build()
+    }
+
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession
+
     override fun onDestroy() {
-        mediaPlayer?.release()
-        mediaPlayer = null
+        Log.d("MusicService", "onDestroy")
+        progressRunnable?.let {
+            handler.removeCallbacks(it)
+        }
+        try {
+            if (this::player.isInitialized) {
+                player.release()
+            }
+        } catch (e: Exception) {
+            Log.w("MusicService", "Error releasing player", e)
+        }
+        mediaSession?.run {
+            release()
+            mediaSession = null
+        }
+        MusicService.player = null
         super.onDestroy()
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        Log.d("MusicService", "onTaskRemoved")
+        super.onTaskRemoved(rootIntent)
     }
 }
