@@ -63,6 +63,7 @@ class MusicService : MediaSessionService() {
                     currentArtist = audio?.artist ?: ""
                     currentAlbumId = audio?.albumId ?: -1
                     sendNowPlaying()
+                    updateNotification()
                 }
             }
         )
@@ -96,8 +97,7 @@ class MusicService : MediaSessionService() {
                     // 再生
                     player.prepare()
                     player.play()
-                    startForeground(1, createNotification())
-                    startProgressUpdates()
+                    enterForegroundPlayback()
                 }
             }
             "TOGGLE_PLAY" -> {
@@ -107,6 +107,7 @@ class MusicService : MediaSessionService() {
                 } else {
                     player.play()
                     isPlaying = true
+                    enterForegroundPlayback()
                 }
                 updateNotification()
                 // 再生ボタンの見た目切り替えメッセージの送信
@@ -119,13 +120,17 @@ class MusicService : MediaSessionService() {
                 player.stop()
             }
             "ADD_TO_QUEUE" -> {
-                val audio = intent.getSerializableExtra("audio") as AudioFile
+                val audio = intent.getSerializableExtra("audio") as? AudioFile
                 if (audio != null) {
                     val alreadyExists = (0 until player.mediaItemCount).any { index ->
                         player.getMediaItemAt(index).mediaId == audio.id.toString()
-                        }
+                    }
                     if (!alreadyExists) {
-                        addToQueue(audio)
+                        if (isShuffle) {
+                            mixShuffledQueueIntoExisting(listOf(audio))
+                        } else {
+                            addToQueue(audio)
+                        }
                     } else {
                         Log.d("MusicService", "Already in queue")
                     }
@@ -136,13 +141,36 @@ class MusicService : MediaSessionService() {
                         "audioList"
                     ) as? ArrayList<AudioFile>
 
-                audios?.forEach { audio ->
-                    val alreadyExists = (0 until player.mediaItemCount).any { 
-                        index -> player.getMediaItemAt(index).mediaId == audio.id.toString()
-                        }
-                    if (!alreadyExists) {
-                        addToQueue(audio)
+                if (audios != null) {
+                    if (isShuffle) {
+                        mixShuffledQueueIntoExisting(audios)
+                    } else {
+                        addListToQueueAfterCurrent(audios)
                     }
+                }
+            }
+            "PLAY_LIST_SHUFFLED" -> {
+                val audios = intent.getSerializableExtra(
+                        "audioList"
+                    ) as? ArrayList<AudioFile>
+
+                isShuffle = true
+                val shuffleIntent = Intent("SHUFFLE_STATE_CHANGED")
+                shuffleIntent.putExtra("isShuffle", isShuffle)
+                sendBroadcast(shuffleIntent)
+
+                player.clearMediaItems()
+                audios?.shuffled()?.forEach { audio ->
+                    audioMap[audio.id.toString()] = audio
+                    addToQueue(audio)
+                }
+
+                if (audios?.isNotEmpty() == true) {
+                    player.seekTo(0, 0)
+                    player.prepare()
+                    player.play()
+                    enterForegroundPlayback()
+                    sendNowPlaying()
                 }
             }
             "NEXT" -> playNext()
@@ -165,9 +193,11 @@ class MusicService : MediaSessionService() {
                 sendBroadcast(intent)
             }
             "TOGGLE_SHUFFLE" -> {
-                player.shuffleModeEnabled = !player.shuffleModeEnabled
-                isShuffle = player.shuffleModeEnabled
-                Toast.makeText(this, 
+                isShuffle = !isShuffle
+                if (isShuffle) {
+                    shuffleCurrentQueue()
+                }
+                Toast.makeText(this,
                     if (isShuffle) "シャッフルON" else "シャッフルOFF",
                     Toast.LENGTH_SHORT
                 ).show()
@@ -178,26 +208,97 @@ class MusicService : MediaSessionService() {
             "REQUEST_STATE" -> {
                 sendNowPlaying()
                 sendBroadcast(Intent("PLAYING_STATE_CHANGED").putExtra("isPlaying", player.isPlaying))
+                sendBroadcast(Intent("REPEAT_STATE_CHANGED").putExtra("isRepeatAll", isRepeatAll))
+                sendBroadcast(Intent("SHUFFLE_STATE_CHANGED").putExtra("isShuffle", isShuffle))
             }
             "PLAY_INDEX" -> {
                 val index = intent.getIntExtra("index", 0)
                 player.seekTo(index, 0)
                 player.play()
+                enterForegroundPlayback()
             }
         }
 
         return START_STICKY
     }
 
+    private fun enterForegroundPlayback() {
+        startForeground(1, createNotification())
+        startProgressUpdates()
+    }
+
+    private fun shuffleCurrentQueue() {
+        val currentQueue = getQueue()
+        if (currentQueue.isEmpty()) return
+
+        val shuffled = currentQueue.shuffled()
+        player.clearMediaItems()
+
+        shuffled.forEach { audio ->
+            audioMap[audio.id.toString()] = audio
+            player.addMediaItem(audio.toMediaItem())
+        }
+
+        sendNowPlaying()
+    }
+
+    private fun mixShuffledQueueIntoExisting(newItems: List<AudioFile>) {
+        if (newItems.isEmpty()) return
+
+        val shuffledItems = newItems.shuffled()
+        val anchorIndex = getInsertionIndexAfterCurrent()
+        var currentTail = player.mediaItemCount
+
+        shuffledItems.forEach { audio ->
+            val alreadyExists = (0 until player.mediaItemCount).any { index ->
+                player.getMediaItemAt(index).mediaId == audio.id.toString()
+            }
+            if (!alreadyExists) {
+                audioMap[audio.id.toString()] = audio
+
+                val maxInsertIndex = currentTail.coerceAtLeast(anchorIndex)
+                val randomOffset = if (maxInsertIndex > anchorIndex) {
+                    (0 until (maxInsertIndex - anchorIndex + 1)).random()
+                } else {
+                    0
+                }
+                val insertAt = (anchorIndex + randomOffset).coerceAtMost(player.mediaItemCount)
+
+                player.addMediaItem(insertAt, audio.toMediaItem())
+                currentTail = player.mediaItemCount
+            }
+        }
+    }
+
+    private fun addListToQueueAfterCurrent(audios: List<AudioFile>) {
+        val startIndex = getInsertionIndexAfterCurrent()
+        var offset = 0
+
+        audios.forEach { audio ->
+            val alreadyExists = (0 until player.mediaItemCount).any { index ->
+                player.getMediaItemAt(index).mediaId == audio.id.toString()
+            }
+            if (!alreadyExists) {
+                audioMap[audio.id.toString()] = audio
+                player.addMediaItem(startIndex + offset, audio.toMediaItem())
+                offset += 1
+            }
+        }
+    }
+
+    private fun getInsertionIndexAfterCurrent(): Int {
+        val current = player.currentMediaItemIndex
+        return if (current >= 0 && player.mediaItemCount > 0) {
+            current + 1
+        } else {
+            player.mediaItemCount
+        }
+    }
+
     fun addToQueue(audio: AudioFile) {
         audioMap[audio.id.toString()] = audio
-        player.addMediaItem(audio.toMediaItem())
-
-        // 初回だけ再生開始
-        if (player.mediaItemCount == 1) {
-            player.prepare()
-            player.play()
-        }
+        val insertIndex = getInsertionIndexAfterCurrent()
+        player.addMediaItem(insertIndex, audio.toMediaItem())
     }
 
     private fun playNext() {

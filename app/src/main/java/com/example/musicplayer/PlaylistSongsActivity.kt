@@ -96,10 +96,6 @@ class PlaylistSongsActivity : AppCompatActivity() {
         when (item.itemId) {
             R.id.action_add_queue -> {
 
-                val ids = currentSongs
-                    .map { it.id }
-                    .toLongArray()
-
                 val intent = Intent(
                         this,
                         MusicService::class.java
@@ -114,6 +110,27 @@ class PlaylistSongsActivity : AppCompatActivity() {
                 Toast.makeText(
                     this,
                     "キューに追加しました",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                return true
+            }
+
+            R.id.action_add_queue_shuffle -> {
+                val intent = Intent(
+                    this,
+                    MusicService::class.java
+                )
+                intent.action = "PLAY_LIST_SHUFFLED"
+                intent.putExtra(
+                    "audioList",
+                    ArrayList(currentSongs)
+                )
+                startService(intent)
+
+                Toast.makeText(
+                    this,
+                    "シャッフルして再生します",
                     Toast.LENGTH_SHORT
                 ).show()
 

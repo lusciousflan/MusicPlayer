@@ -213,6 +213,10 @@ class MainActivity : AppCompatActivity() {
         registerReceiver(repeatReceiver, IntentFilter("REPEAT_STATE_CHANGED"))
         registerReceiver(shuffleReceiver, IntentFilter("SHUFFLE_STATE_CHANGED"))
         registerReceiver(nowPlayingReceiver, IntentFilter("NOW_PLAYING"))
+
+        val requestStateIntent = Intent(this, MusicService::class.java)
+        requestStateIntent.action = "REQUEST_STATE"
+        startService(requestStateIntent)
     }
 
     override fun onPause() {
@@ -302,23 +306,39 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkPermission(): Boolean {
-        val permission = if (Build.VERSION.SDK_INT >= 33) {
+        val audioPermission = if (Build.VERSION.SDK_INT >= 33) {
             Manifest.permission.READ_MEDIA_AUDIO
         } else {
             Manifest.permission.READ_EXTERNAL_STORAGE
         }
 
-        return ContextCompat.checkSelfPermission(this, permission) ==
+        val audioGranted = ContextCompat.checkSelfPermission(this, audioPermission) ==
                 PackageManager.PERMISSION_GRANTED
+
+        val notificationGranted = if (Build.VERSION.SDK_INT >= 33) {
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+                    PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+
+        return audioGranted && notificationGranted
     }
 
     private fun requestPermission() {
-        val permission = if (Build.VERSION.SDK_INT >= 33) {
+        val permissions = mutableListOf<String>()
+        val audioPermission = if (Build.VERSION.SDK_INT >= 33) {
             Manifest.permission.READ_MEDIA_AUDIO
         } else {
             Manifest.permission.READ_EXTERNAL_STORAGE
         }
-        ActivityCompat.requestPermissions(this, arrayOf(permission), 1)
+        permissions += audioPermission
+
+        if (Build.VERSION.SDK_INT >= 33) {
+            permissions += Manifest.permission.POST_NOTIFICATIONS
+        }
+
+        ActivityCompat.requestPermissions(this, permissions.toTypedArray(), 1)
     }
 
     override fun onRequestPermissionsResult(
@@ -327,13 +347,28 @@ class MainActivity : AppCompatActivity() {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 1 &&
-            grantResults.isNotEmpty() &&
-            grantResults[0] == PackageManager.PERMISSION_GRANTED
-        ) {
-            // setupRecycler()
-        } else {
-            Toast.makeText(this, "権限が必要です", Toast.LENGTH_SHORT).show()
+        if (requestCode == 1) {
+            val audioGranted = permissions.any { permission ->
+                permission == (if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE)
+            } && grantResults.isNotEmpty() &&
+                    grantResults.zip(permissions).any { (result, permission) ->
+                        permission == (if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE) && result == PackageManager.PERMISSION_GRANTED
+                    }
+
+            val notificationGranted = if (Build.VERSION.SDK_INT >= 33) {
+                permissions.any { it == Manifest.permission.POST_NOTIFICATIONS } &&
+                        grantResults.zip(permissions).any { (result, permission) ->
+                            permission == Manifest.permission.POST_NOTIFICATIONS && result == PackageManager.PERMISSION_GRANTED
+                        }
+            } else {
+                true
+            }
+
+            if (audioGranted && notificationGranted) {
+                // setupRecycler()
+            } else {
+                Toast.makeText(this, "権限が必要です", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
