@@ -441,6 +441,12 @@ class MusicService : MediaSessionService() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         Log.d("MusicService", "onTaskRemoved")
+
+        if (player.isPlaying) {
+            startForeground(1, createNotification())
+            return
+        }
+
         super.onTaskRemoved(rootIntent)
     }
 }
