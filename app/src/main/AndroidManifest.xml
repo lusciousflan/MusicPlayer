@@ -13,17 +13,16 @@
         android:label="MusicPlayer"
         android:theme="@style/Theme.AppCompat.Light.DarkActionBar">
 
-        <activity android:name=".QueueActivity" />
-        <activity android:name=".PlayerActivity" />
-        <activity android:name=".TagListActivity"/>
-        <activity android:name=".TagSongsActivity"/>
-        <activity android:name=".PlaylistListActivity"/>
-        <activity android:name=".PlaylistSongsActivity"/>
-        <activity android:name=".CreatePlaylistActivity"/>
+        <activity android:name=".ui.activity.QueueActivity" />
+        <activity android:name=".ui.activity.PlayerActivity" />
+        <activity android:name=".ui.activity.TagListActivity"/>
+        <activity android:name=".ui.activity.TagSongsActivity"/>
+        <activity android:name=".ui.activity.PlaylistSongsActivity"/>
+        <activity android:name=".ui.activity.CreatePlaylistActivity"/>
 
 
         <activity
-            android:name=".MainActivity"
+            android:name=".ui.activity.MainActivity"
             android:exported="true">
 
             <intent-filter>
@@ -33,7 +32,7 @@
 
         </activity>
         <service
-            android:name=".MusicService"
+            android:name=".playback.MusicService"
             android:exported="true"
             android:foregroundServiceType="mediaPlayback"
             android:stopWithTask="false">

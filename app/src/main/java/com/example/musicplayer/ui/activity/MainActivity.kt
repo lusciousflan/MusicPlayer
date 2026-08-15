@@ -1,0 +1,484 @@
+package com.example.musicplayer.ui.activity
+
+import com.example.musicplayer.R
+import com.example.musicplayer.MyApp
+import com.example.musicplayer.data.local.*
+import com.example.musicplayer.model.AudioFile
+import com.example.musicplayer.model.LibraryItem
+import com.example.musicplayer.playback.MusicService
+import com.example.musicplayer.ui.adapter.AudioAdapter
+import com.example.musicplayer.ui.fragment.*
+import android.Manifest
+import android.content.ContentUris
+import android.content.pm.PackageManager
+import android.content.Intent
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
+import android.content.Context
+import android.media.MediaPlayer
+import android.net.Uri
+import android.os.Build
+import android.os.Bundle
+import android.provider.MediaStore
+import android.util.Log
+import android.widget.LinearLayout
+import android.widget.EditText
+import android.widget.Toast
+import android.widget.Button
+import android.widget.SeekBar
+import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AlertDialog
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import com.google.android.material.tabs.TabLayout
+
+
+class MainActivity : AppCompatActivity() {
+
+    private var mediaPlayer: MediaPlayer? = null
+    private var audioList: List<AudioFile> = emptyList()
+    private lateinit var playPauseButton: Button
+    private lateinit var nextButton: Button
+    private lateinit var prevButton: Button
+    private lateinit var seekBar: SeekBar
+    private lateinit var timeText: TextView
+    private lateinit var adapter: AudioAdapter
+    private lateinit var repeatButton: Button
+    private lateinit var shuffleButton: Button
+    lateinit var miniTitle: TextView
+    private lateinit var repository: MusicRepository
+    private lateinit var recyclerView: RecyclerView
+    private var libraryItems: List<LibraryItem> = emptyList()
+
+    // シークバーの状態を更新
+    private val progressReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val current = intent?.getIntExtra("current", 0) ?: 0
+            val duration = intent?.getIntExtra("duration", 0) ?: 0
+            seekBar.max = duration
+            seekBar.progress = current
+            timeText.text = "${formatTime(current)} / ${formatTime(duration)}"
+            Log.d(
+                "MainActivity",
+                "progress=$current duration=$duration"
+            )
+        }
+    }
+    
+    // 再生/一時停止ボタンの見た目を切り替える
+    private val playPauseReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val isPlaying = intent?.getBooleanExtra("isPlaying", false) ?: false
+            updatePlayPauseButton(isPlaying)
+        }
+    }
+    private fun updatePlayPauseButton(isPlaying: Boolean) {
+        playPauseButton.text = if (isPlaying) "⏸" else "▶"
+    }
+
+    //リピートボタンの見た目を切り替える
+    private val repeatReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val isRepeat = intent?.getBooleanExtra("isRepeatAll", false) ?: false
+            updateRepeatButton(isRepeat)
+        }
+    }
+    private fun updateRepeatButton(isRepeat: Boolean) {
+        repeatButton.text = if (isRepeat) "リピートON" else "リピートOFF"
+    }
+
+    // シャッフルボタンの見た目を切り替える
+    private val shuffleReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val isShuffle = intent?.getBooleanExtra("isShuffle", false) ?: false
+            updateShuffleButton(isShuffle)
+        }
+    }
+    private fun updateShuffleButton(isShuffle: Boolean) {
+        shuffleButton.text = if (isShuffle) "シャッフル ON" else "シャッフル OFF"
+    }
+
+    // 再生中の曲のタイトルを受け取る
+    private val nowPlayingReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val title = intent?.getStringExtra("title") ?: return
+            miniTitle.text = title
+        }
+    }
+
+    // 画面関連処理
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        if (checkPermission()) {
+            // setupRecycler()
+        } else {
+            requestPermission()
+        }
+    
+        playPauseButton = findViewById(R.id.playPauseButton)
+        nextButton = findViewById(R.id.nextButton)
+        prevButton = findViewById(R.id.prevButton)
+        seekBar = findViewById(R.id.seekBar)
+        timeText = findViewById(R.id.timeText)
+        repeatButton = findViewById(R.id.repeatButton)
+        shuffleButton = findViewById(R.id.shuffleButton)
+        miniTitle = findViewById(R.id.miniTitle)
+
+        val dao = (application as MyApp).database.audioDao()
+        repository = MusicRepository(dao)
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            syncMediaStore(this@MainActivity, dao)
+        }
+        findViewById<LinearLayout>(R.id.miniPlayer).setOnClickListener {
+            startActivity(Intent(this, PlayerActivity::class.java))
+        }
+        playPauseButton.setOnClickListener {
+            val intent = Intent(this, MusicService::class.java)
+            intent.action = "TOGGLE_PLAY"
+            startService(intent)
+        }
+        nextButton.setOnClickListener {
+            val intent = Intent(this, MusicService::class.java)
+            intent.action = "NEXT"
+            startService(intent)
+        }
+        prevButton.setOnClickListener {
+            val intent = Intent(this, MusicService::class.java)
+            intent.action = "PREV"
+            startService(intent)
+        }
+        seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (fromUser) {
+                    val intent = Intent(this@MainActivity, MusicService::class.java)
+                    intent.action = "SEEK"
+                    intent.putExtra("position", progress)
+                    startService(intent)
+                }
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        findViewById<Button>(R.id.queueButton).setOnClickListener {
+            val intent = Intent(this, QueueActivity::class.java)
+            startActivity(intent)
+        }
+        repeatButton.setOnClickListener {
+            val intent = Intent(this, MusicService::class.java)
+            intent.action = "TOGGLE_REPEAT"
+            startService(intent)
+        }
+        shuffleButton.setOnClickListener {
+            val intent = Intent(this, MusicService::class.java)
+            intent.action = "TOGGLE_SHUFFLE"
+            startService(intent)
+        }
+        findViewById<Button>(R.id.tagButton).setOnClickListener {
+            startActivity(Intent(this, TagListActivity::class.java))
+        }
+        // findViewById<Button>(R.id.playlistButton).setOnClickListener {
+        //     startActivity(Intent(this, PlaylistListActivity::class.java))
+        // }
+
+        val tabLayout = findViewById<com.google.android.material.tabs.TabLayout>(R.id.tabLayout)
+        tabLayout.addTab(tabLayout.newTab().setText("楽曲"))
+        tabLayout.addTab(tabLayout.newTab().setText("ライブラリ"))
+        tabLayout.addOnTabSelectedListener(
+            object : com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
+                override fun onTabSelected(
+                    tab: com.google.android.material.tabs.TabLayout.Tab
+                ) {
+                    when (tab.position) {
+                        0 -> showSongs()
+                        1 -> showLibrary()
+                    }
+                }
+                override fun onTabUnselected(tab: TabLayout.Tab) {}
+                override fun onTabReselected(tab: TabLayout.Tab) {}
+            }
+        )
+        supportFragmentManager.beginTransaction()
+            .replace(
+                R.id.libraryContainer,
+                SongsFragment()
+            )
+            .commit()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        registerReceiver(playPauseReceiver, IntentFilter("PLAYING_STATE_CHANGED"))
+        registerReceiver(progressReceiver, IntentFilter("MUSIC_PROGRESS"))
+        registerReceiver(repeatReceiver, IntentFilter("REPEAT_STATE_CHANGED"))
+        registerReceiver(shuffleReceiver, IntentFilter("SHUFFLE_STATE_CHANGED"))
+        registerReceiver(nowPlayingReceiver, IntentFilter("NOW_PLAYING"))
+
+        val requestStateIntent = Intent(this, MusicService::class.java)
+        requestStateIntent.action = "REQUEST_STATE"
+        startService(requestStateIntent)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        unregisterReceiver(playPauseReceiver)
+        unregisterReceiver(progressReceiver)
+        unregisterReceiver(repeatReceiver)
+        unregisterReceiver(shuffleReceiver)
+        unregisterReceiver(nowPlayingReceiver)
+    }
+
+    private fun setupRecycler() {
+        audioList = getAudioFiles()
+
+        recyclerView = findViewById(R.id.recyclerView)
+        recyclerView.layoutManager = LinearLayoutManager(this)
+
+        adapter = AudioAdapter(
+            audioList,
+            getAlbumArtUri = { albumId ->
+                ContentUris.withAppendedId(
+                    Uri.parse("content://media/external/audio/albumart"),
+                    albumId
+                )
+            },
+            onClick = { audio, position ->
+                val intent = Intent(this, MusicService::class.java)
+                intent.action = "PLAY"
+                intent.putExtra("audio", audio)
+                startService(intent)
+                adapter.setCurrentPlaying(position)
+            },
+            onAddToQueue = { audio ->
+                val intent = Intent(this, MusicService::class.java)
+                intent.action = "ADD_TO_QUEUE"
+                intent.putExtra("audio", audio)
+                startService(intent)
+            },
+            onEditTag = { audio ->
+                showTagDialog(audio)
+            }
+            )
+        recyclerView.adapter = adapter
+        showSongs()
+    }
+
+    fun getAudioFiles(): List<AudioFile> {
+        val list = mutableListOf<AudioFile>()
+        val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+
+        val cursor = contentResolver.query(
+            collection,
+            arrayOf(
+                MediaStore.Audio.Media._ID,
+                MediaStore.Audio.Media.TITLE,
+                MediaStore.Audio.Media.ARTIST,
+                MediaStore.Audio.Media.ALBUM_ID
+            ),
+            "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.MIME_TYPE} LIKE 'audio/%'",
+            null,
+            null
+        )
+
+        cursor?.use {
+            val idCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+            val titleCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
+            val artistCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
+
+            while (it.moveToNext()) {
+                val id = it.getLong(idCol)
+                val title = it.getString(titleCol)
+                val artist = it.getString(artistCol)
+                val uri = ContentUris.withAppendedId(collection, id).toString()
+                val albumId = it.getLong(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID))
+
+                list.add(AudioFile(id, title, artist, uri, albumId))
+            }
+        }
+        return list
+    }
+
+    private fun formatTime(ms: Int): String {
+        val totalSeconds = ms / 1000
+        val minutes = totalSeconds / 60
+        val seconds = totalSeconds % 60
+        return String.format("%02d:%02d", minutes, seconds)
+    }
+
+    private fun checkPermission(): Boolean {
+        val audioPermission = if (Build.VERSION.SDK_INT >= 33) {
+            Manifest.permission.READ_MEDIA_AUDIO
+        } else {
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+
+        val audioGranted = ContextCompat.checkSelfPermission(this, audioPermission) ==
+                PackageManager.PERMISSION_GRANTED
+
+        val notificationGranted = if (Build.VERSION.SDK_INT >= 33) {
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+                    PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+
+        return audioGranted && notificationGranted
+    }
+
+    private fun requestPermission() {
+        val permissions = mutableListOf<String>()
+        val audioPermission = if (Build.VERSION.SDK_INT >= 33) {
+            Manifest.permission.READ_MEDIA_AUDIO
+        } else {
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+        permissions += audioPermission
+
+        if (Build.VERSION.SDK_INT >= 33) {
+            permissions += Manifest.permission.POST_NOTIFICATIONS
+        }
+
+        ActivityCompat.requestPermissions(this, permissions.toTypedArray(), 1)
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 1) {
+            val audioGranted = permissions.any { permission ->
+                permission == (if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE)
+            } && grantResults.isNotEmpty() &&
+                    grantResults.zip(permissions).any { (result, permission) ->
+                        permission == (if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE) && result == PackageManager.PERMISSION_GRANTED
+                    }
+
+            val notificationGranted = if (Build.VERSION.SDK_INT >= 33) {
+                permissions.any { it == Manifest.permission.POST_NOTIFICATIONS } &&
+                        grantResults.zip(permissions).any { (result, permission) ->
+                            permission == Manifest.permission.POST_NOTIFICATIONS && result == PackageManager.PERMISSION_GRANTED
+                        }
+            } else {
+                true
+            }
+
+            if (audioGranted && notificationGranted) {
+                // setupRecycler()
+            } else {
+                Toast.makeText(this, "権限が必要です", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    fun showTagDialog(audio: AudioFile) {
+
+        lifecycleScope.launch {
+            val currentTags = repository.getTags(audio.id)
+            val items = currentTags.toMutableList()
+            items.add("＋ タグを追加する")
+
+            AlertDialog.Builder(this@MainActivity)
+                .setTitle("タグ編集")
+                .setItems(items.toTypedArray()) { _, which ->
+                    val selected = items[which]
+                    if (selected == "＋ タグを追加する") {
+                        showAddTagDialog(audio)
+                    } else {
+                        showRemoveTagDialog(audio, selected)
+                    }
+                }
+                .show()
+        }
+    }
+
+    private fun showAddTagDialog(audio: AudioFile) {
+
+        lifecycleScope.launch {
+            val tags = repository.getAllTags()
+            val items = tags.map { it.name }.toMutableList()
+            items.add("＋ タグを追加する")
+
+            AlertDialog.Builder(this@MainActivity)
+                .setTitle("タグを選択")
+                .setItems(items.toTypedArray()) { _, which ->
+                    val selected = items[which]
+                    if (selected == "＋ タグを追加する") {
+                        showCreateTagDialog(audio)
+                    } else {
+                        lifecycleScope.launch {
+                            repository.addTag(audio.id, selected)
+                        }
+                    }
+                }
+                .show()
+        }
+    }
+
+    private fun showCreateTagDialog(audio: AudioFile) {
+
+        val editText = EditText(this)
+
+        AlertDialog.Builder(this)
+            .setTitle("新しいタグ")
+            .setView(editText)
+            .setPositiveButton("追加") { _, _ ->
+                val tag = editText.text.toString()
+                if (tag.isBlank()) return@setPositiveButton
+                lifecycleScope.launch {
+                    repository.addTag(audio.id, tag)
+                }
+            }
+            .setNegativeButton("キャンセル", null)
+            .show()
+    }
+
+    private fun showRemoveTagDialog(audio: AudioFile, tag: String) {
+        AlertDialog.Builder(this)
+            .setTitle("タグ削除")
+            .setMessage("タグ「$tag」を削除しますか？")
+            .setPositiveButton("削除") { _, _ ->
+                lifecycleScope.launch {
+                    repository.removeTag(audio.id, tag)
+                }
+            }
+            .setNegativeButton("キャンセル", null)
+            .show()
+    }
+
+    suspend fun getTags(audioId: Long, dao: AudioDao): List<String> {
+        return dao.getTagsForAudio(audioId)
+    }
+
+    private fun showSongs() {
+        supportFragmentManager.beginTransaction()
+            .replace(
+                R.id.libraryContainer,
+                SongsFragment()
+            )
+            .commit()
+    }
+
+    private fun showLibrary() {
+        supportFragmentManager.beginTransaction()
+            .replace(
+                R.id.libraryContainer,
+                LibraryFragment()
+            )
+            .commit()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        mediaPlayer?.release()
+    }
+}
