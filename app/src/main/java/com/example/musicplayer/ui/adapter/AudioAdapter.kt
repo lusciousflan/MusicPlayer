@@ -50,6 +50,11 @@ class AudioAdapter(
         holder.title.text = audio.title
         holder.artist.text = audio.artist
 
+        // RecyclerViewで再利用されたアイテムに前回のアニメーション状態を残さない
+        holder.itemView.animate().cancel()
+        holder.itemView.scaleX = 1f
+        holder.itemView.scaleY = 1f
+
         Glide.with(holder.itemView)
             .load(getAlbumArtUri(audio.albumId))
             .placeholder(R.drawable.default_art)
@@ -70,6 +75,19 @@ class AudioAdapter(
         )
 
         holder.itemView.setOnClickListener {
+            // タップしたことがすぐ分かるように、アイテムを軽く押し込む
+            it.animate()
+                .scaleX(0.96f)
+                .scaleY(0.96f)
+                .setDuration(80L)
+                .withEndAction {
+                    it.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(140L)
+                        .start()
+                }
+                .start()
             onClick(audio, position)
         }
         holder.itemView.setOnLongClickListener { view ->

@@ -70,7 +70,17 @@ class PlaylistSongsActivity : AppCompatActivity() {
                             albumId
                         )
                     },
-                    onClick = { _, _ -> },
+                    onClick = { _, position ->
+                        val intent = Intent(
+                            this@PlaylistSongsActivity,
+                            MusicService::class.java
+                        ).apply {
+                            action = "PLAY_PLAYLIST_FROM_INDEX"
+                            putExtra("audioList", ArrayList(currentSongs))
+                            putExtra("index", position)
+                        }
+                        startService(intent)
+                    },
                     onAddToQueue = { },
                     onEditTag = { }
                 )

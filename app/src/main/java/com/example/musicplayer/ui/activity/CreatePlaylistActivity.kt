@@ -118,9 +118,12 @@ class CreatePlaylistActivity : AppCompatActivity() {
 
                 lifecycleScope.launch {
 
+                    val expression = expressionEdit.text.toString()
+                    val name = nameEdit.text.toString().ifBlank { expression }
+
                     repository.createPlaylist(
-                        name = nameEdit.text.toString(),
-                        expression = expressionEdit.text.toString()  
+                        name = name,
+                        expression = expression
                     )
 
                     finish()
