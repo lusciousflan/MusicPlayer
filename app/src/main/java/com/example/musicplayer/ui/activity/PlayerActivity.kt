@@ -24,6 +24,9 @@ class PlayerActivity : AppCompatActivity() {
     lateinit var albumArt: ImageView
     private lateinit var seekBar: SeekBar
     private lateinit var timeText: TextView
+    private lateinit var gainSeekBar: SeekBar
+    private lateinit var gainText: TextView
+    private var currentAudioId: Long = -1L
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -31,6 +34,7 @@ class PlayerActivity : AppCompatActivity() {
 
                 "NOW_PLAYING" -> {
                     title.text = intent.getStringExtra("title")
+                    currentAudioId = intent.getLongExtra("audioId", -1L)
                     val albumId = intent.getLongExtra("albumId", -1)
                     if (albumId != -1L) {
                         Glide.with(this@PlayerActivity)
@@ -42,6 +46,12 @@ class PlayerActivity : AppCompatActivity() {
                     } else {
                         albumArt.setImageResource(R.drawable.default_art) // fallback
                     }
+                }
+
+                "AUDIO_GAIN_CHANGED" -> {
+                    val gain = intent.getIntExtra("gainDbHundredths", 0)
+                    gainText.text = "音量補正 ${gain / 100f} dB"
+                    gainSeekBar.progress = gain
                 }
 
                 "PLAY_STATE_CHANGED" -> {
@@ -71,6 +81,22 @@ class PlayerActivity : AppCompatActivity() {
         albumArt = findViewById(R.id.playerAlbumArt)
         seekBar = findViewById(R.id.playerSeekBar)
         timeText = findViewById(R.id.playerTimeText)
+        gainSeekBar = findViewById(R.id.playerGainSeekBar)
+        gainText = findViewById(R.id.playerGainText)
+        gainSeekBar.max = 1200
+        gainSeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(bar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (!fromUser || currentAudioId < 0) return
+                gainText.text = "音量補正 ${progress / 100f} dB"
+                startService(Intent(this@PlayerActivity, MusicService::class.java).apply {
+                    action = "SET_AUDIO_GAIN"
+                    putExtra("audioId", currentAudioId)
+                    putExtra("gainDbHundredths", progress)
+                })
+            }
+            override fun onStartTrackingTouch(bar: SeekBar?) = Unit
+            override fun onStopTrackingTouch(bar: SeekBar?) = Unit
+        })
 
         playPause.setOnClickListener {
             val intent = Intent(this, MusicService::class.java)
@@ -105,6 +131,7 @@ class PlayerActivity : AppCompatActivity() {
         registerReceiver(receiver, IntentFilter("NOW_PLAYING"))
         registerReceiver(receiver, IntentFilter("PLAY_STATE_CHANGED"))
         registerReceiver(progressReceiver, IntentFilter("MUSIC_PROGRESS"))
+        registerReceiver(receiver, IntentFilter("AUDIO_GAIN_CHANGED"))
 
         startService(Intent(this, MusicService::class.java).apply {
             action = "REQUEST_STATE"

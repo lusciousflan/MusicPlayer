@@ -19,6 +19,14 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.content.ContentUris
 import android.util.Log
+import android.media.audiofx.LoudnessEnhancer
+import com.example.musicplayer.MyApp
+import com.example.musicplayer.data.local.AudioVolumeEntity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 class MusicService : MediaSessionService() {
     private lateinit var player: ExoPlayer
@@ -32,6 +40,8 @@ class MusicService : MediaSessionService() {
     var isShuffle = false
     private val audioMap = mutableMapOf<String, AudioFile>()
     private var progressRunnable: Runnable? = null
+    private var loudnessEnhancer: LoudnessEnhancer? = null
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     companion object {
         var player: ExoPlayer? = null
@@ -58,16 +68,64 @@ class MusicService : MediaSessionService() {
                     sendBroadcast(intent)
                     updateNotification()
                 }
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    if (playbackState == Player.STATE_READY) {
+                        applyGainFor(audioMap[player.currentMediaItem?.mediaId])
+                    }
+                }
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                     val audio = audioMap[mediaItem?.mediaId]
                     currentTitle = audio?.title ?: ""
                     currentArtist = audio?.artist ?: ""
                     currentAlbumId = audio?.albumId ?: -1
+                    applyGainFor(audio)
                     sendNowPlaying()
                     updateNotification()
                 }
             }
         )
+    }
+
+    private fun applyGainFor(audio: AudioFile?) {
+        if (audio == null) return
+        serviceScope.launch {
+            val gain = (application as MyApp).database.audioDao()
+                .getAudioGainDbHundredths(audio.id) ?: 0
+            // A previous asynchronous lookup must not overwrite the newly
+            // selected track's value after a fast track transition.
+            if (player.currentMediaItem?.mediaId != audio.id.toString()) return@launch
+            ensureLoudnessEnhancer()
+            loudnessEnhancer?.setTargetGain(gain)
+            sendBroadcast(Intent("AUDIO_GAIN_CHANGED").apply {
+                putExtra("audioId", audio.id)
+                putExtra("gainDbHundredths", gain)
+            })
+        }
+    }
+
+    private fun sendCurrentGain() {
+        val audioId = player.currentMediaItem?.mediaId?.toLongOrNull() ?: return
+        serviceScope.launch {
+            val gain = (application as MyApp).database.audioDao()
+                .getAudioGainDbHundredths(audioId) ?: 0
+            if (player.currentMediaItem?.mediaId != audioId.toString()) return@launch
+            sendBroadcast(Intent("AUDIO_GAIN_CHANGED").apply {
+                putExtra("audioId", audioId)
+                putExtra("gainDbHundredths", gain)
+            })
+        }
+    }
+
+    private fun ensureLoudnessEnhancer() {
+        if (loudnessEnhancer != null) return
+        val sessionId = player.audioSessionId
+        if (sessionId == 0) return
+        try {
+            loudnessEnhancer = LoudnessEnhancer(sessionId).apply { setEnabled(true) }
+        } catch (e: RuntimeException) {
+            // Some device audio implementations don't provide this effect.
+            Log.w("MusicService", "LoudnessEnhancer is not available", e)
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = super.onBind(intent)
@@ -217,6 +275,7 @@ class MusicService : MediaSessionService() {
             }
             "REQUEST_STATE" -> {
                 sendNowPlaying()
+                sendCurrentGain()
                 sendBroadcast(Intent("PLAYING_STATE_CHANGED").putExtra("isPlaying", player.isPlaying))
                 sendBroadcast(Intent("REPEAT_STATE_CHANGED").putExtra("isRepeatAll", isRepeatAll))
                 sendBroadcast(Intent("SHUFFLE_STATE_CHANGED").putExtra("isShuffle", isShuffle))
@@ -226,6 +285,22 @@ class MusicService : MediaSessionService() {
                 player.seekTo(index, 0)
                 player.play()
                 enterForegroundPlayback()
+            }
+            "SET_AUDIO_GAIN" -> {
+                val audioId = intent.getLongExtra("audioId", -1L)
+                val gain = intent.getIntExtra("gainDbHundredths", 0).coerceIn(0, 1200)
+                if (audioId >= 0) {
+                    serviceScope.launch(Dispatchers.IO) {
+                        (application as MyApp).database.audioDao()
+                            .upsertAudioVolume(AudioVolumeEntity(audioId, gain))
+                        launch(Dispatchers.Main) {
+                            if (player.currentMediaItem?.mediaId == audioId.toString()) {
+                                ensureLoudnessEnhancer()
+                                loudnessEnhancer?.setTargetGain(gain)
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -450,6 +525,7 @@ class MusicService : MediaSessionService() {
         intent.putExtra("title", currentTitle)
         intent.putExtra("artist", currentArtist)
         intent.putExtra("albumId", currentAlbumId)
+        intent.putExtra("audioId", player.currentMediaItem?.mediaId?.toLongOrNull() ?: -1L)
         sendBroadcast(intent)
     }
 
@@ -472,9 +548,11 @@ class MusicService : MediaSessionService() {
             if (this::player.isInitialized) {
                 player.release()
             }
+            loudnessEnhancer?.release()
         } catch (e: Exception) {
             Log.w("MusicService", "Error releasing player", e)
         }
+        serviceScope.cancel()
         mediaSession?.run {
             release()
             mediaSession = null

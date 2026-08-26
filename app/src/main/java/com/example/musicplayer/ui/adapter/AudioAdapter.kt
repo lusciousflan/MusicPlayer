@@ -14,12 +14,14 @@ import com.bumptech.glide.load.engine.DiskCacheStrategy
 import androidx.appcompat.widget.PopupMenu
 
 class AudioAdapter(
-    private val list: List<AudioFile>,
+    list: List<AudioFile>,
     private val getAlbumArtUri: (Long) -> Uri,
     private val onClick: (AudioFile, Int) -> Unit,
     private val onAddToQueue: (AudioFile) -> Unit,
     private val onEditTag: (AudioFile) -> Unit
 ) : RecyclerView.Adapter<AudioAdapter.ViewHolder>() {
+
+    private var list: List<AudioFile> = list
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val title: TextView = view.findViewById(R.id.titleText)
@@ -35,6 +37,12 @@ class AudioAdapter(
 
         if (oldIndex != -1) notifyItemChanged(oldIndex)
         if (index != -1) notifyItemChanged(index)
+    }
+
+    fun updateList(newList: List<AudioFile>) {
+        list = newList
+        currentPlayingIndex = -1
+        notifyDataSetChanged()
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {

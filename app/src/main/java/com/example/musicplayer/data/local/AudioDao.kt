@@ -12,6 +12,12 @@ import androidx.room.RewriteQueriesToDropUnusedColumns
 interface AudioDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAudioVolume(volume: AudioVolumeEntity)
+
+    @Query("SELECT gainDbHundredths FROM audio_volume WHERE audioId = :audioId")
+    suspend fun getAudioGainDbHundredths(audioId: Long): Int?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAudio(audio: AudioEntity)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)

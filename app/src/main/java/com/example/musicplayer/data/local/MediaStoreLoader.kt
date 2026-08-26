@@ -3,6 +3,7 @@ package com.example.musicplayer.data.local
 import android.content.Context
 import android.provider.MediaStore
 import android.content.ContentUris
+import com.example.musicplayer.model.isVisibleAudioTitle
 
 fun loadAudioFromMediaStore(context: Context): List<AudioEntity> {
 
@@ -37,6 +38,7 @@ fun loadAudioFromMediaStore(context: Context): List<AudioEntity> {
             val id = it.getLong(idIndex)
             val title = it.getString(titleIndex)
             val artist = it.getString(artistIndex)
+            if (!isVisibleAudioTitle(title)) continue
             val contentUri = ContentUris.withAppendedId(
                 uri,
                 id

@@ -33,6 +33,20 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"/>
 
+    <TextView
+        android:id="@+id/playerGainText"
+        android:text="音量補正 0.0 dB"
+        android:layout_marginTop="12dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+
+    <SeekBar
+        android:id="@+id/playerGainSeekBar"
+        android:contentDescription="曲ごとの音量補正"
+        android:max="1200"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
     <LinearLayout
         android:orientation="horizontal"
         android:layout_marginTop="16dp"

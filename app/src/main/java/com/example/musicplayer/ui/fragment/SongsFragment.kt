@@ -10,6 +10,9 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
+import android.widget.EditText
+import android.text.Editable
+import android.text.TextWatcher
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -24,7 +27,8 @@ class SongsFragment : Fragment(R.layout.fragment_songs) {
         val recyclerView = view.findViewById<RecyclerView>(R.id.recyclerView)
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
 
-        val audioList = (requireActivity() as MainActivity).getAudioFiles()
+        // MediaStoreから返された現在の順番を反転して表示する
+        val audioList = (requireActivity() as MainActivity).getAudioFiles().reversed()
 
         adapter = AudioAdapter(
             audioList,
@@ -63,5 +67,31 @@ class SongsFragment : Fragment(R.layout.fragment_songs) {
             }
         )
         recyclerView.adapter = adapter
+
+        view.findViewById<EditText>(R.id.searchEditText).addTextChangedListener(
+            object : TextWatcher {
+                override fun beforeTextChanged(
+                    text: CharSequence?, start: Int, count: Int, after: Int
+                ) = Unit
+
+                override fun onTextChanged(
+                    text: CharSequence?, start: Int, before: Int, count: Int
+                ) {
+                    val query = text?.toString()?.trim()?.lowercase() ?: ""
+                    adapter.updateList(
+                        if (query.isEmpty()) {
+                            audioList
+                        } else {
+                            audioList.filter { audio ->
+                                audio.title.lowercase().contains(query) ||
+                                    audio.artist.lowercase().contains(query)
+                            }
+                        }
+                    )
+                }
+
+                override fun afterTextChanged(text: Editable?) = Unit
+            }
+        )
     }
 }

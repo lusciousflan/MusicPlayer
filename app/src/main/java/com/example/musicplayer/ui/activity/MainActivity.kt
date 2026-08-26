@@ -5,6 +5,7 @@ import com.example.musicplayer.MyApp
 import com.example.musicplayer.data.local.*
 import com.example.musicplayer.model.AudioFile
 import com.example.musicplayer.model.LibraryItem
+import com.example.musicplayer.model.isVisibleAudioTitle
 import com.example.musicplayer.playback.MusicService
 import com.example.musicplayer.ui.adapter.AudioAdapter
 import com.example.musicplayer.ui.fragment.*
@@ -297,6 +298,7 @@ class MainActivity : AppCompatActivity() {
                 val id = it.getLong(idCol)
                 val title = it.getString(titleCol)
                 val artist = it.getString(artistCol)
+                if (!isVisibleAudioTitle(title)) continue
                 val uri = ContentUris.withAppendedId(collection, id).toString()
                 val albumId = it.getLong(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID))
 
