@@ -17,8 +17,20 @@ interface AudioDao {
     @Query("SELECT gainDbHundredths FROM audio_volume WHERE audioId = :audioId")
     suspend fun getAudioGainDbHundredths(audioId: Long): Int?
 
+    @Query("SELECT note FROM audio WHERE id = :audioId")
+    suspend fun getAudioNote(audioId: Long): String?
+
+    @Query("UPDATE audio SET note = :note WHERE id = :audioId")
+    suspend fun updateAudioNote(audioId: Long, note: String)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAudio(audio: AudioEntity)
+
+    @Query("UPDATE audio SET title = :title, artist = :artist, uri = :uri, albumId = :albumId WHERE id = :id")
+    suspend fun updateAudioMetadata(id: Long, title: String, artist: String, uri: String, albumId: Long)
+
+    @Query("DELETE FROM audio WHERE id = :id")
+    suspend fun deleteAudio(id: Long)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertTag(tag: TagEntity)
@@ -59,6 +71,12 @@ interface AudioDao {
     """)
     suspend fun removeTag(audioId: Long, tag: String)
 
+    @Query("DELETE FROM AudioTagCrossRef WHERE tagName = :tag")
+    suspend fun removeTagFromAllAudio(tag: String)
+
+    @Query("DELETE FROM tag WHERE name = :tag")
+    suspend fun deleteTag(tag: String)
+
     // あるタグが付いている楽曲をすべて取得
     @Transaction
     @RewriteQueriesToDropUnusedColumns
@@ -70,8 +88,22 @@ interface AudioDao {
     """)
     suspend fun getAudioByTag(tag: String): List<AudioEntity>
 
+    @Query("""
+        SELECT audio.* FROM audio
+        LEFT JOIN AudioTagCrossRef ON audio.id = AudioTagCrossRef.audioId
+        WHERE AudioTagCrossRef.audioId IS NULL
+        ORDER BY audio.title
+    """)
+    suspend fun getAudioWithoutTags(): List<AudioEntity>
+
+    @Query("SELECT * FROM audio ORDER BY addedAt DESC, title")
+    suspend fun getRecentlyAddedAudio(): List<AudioEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPlaylist(playlist: PlaylistEntity)
+
+    @Query("UPDATE playlist SET name = :name, expression = :expression WHERE id = :id")
+    suspend fun updatePlaylist(id: Long, name: String, expression: String)
 
     @Delete
     suspend fun deletePlaylist(playlist: PlaylistEntity)

@@ -15,6 +15,10 @@ sealed class LibraryItem {
     data class Tag(
         val tag: TagEntity
     ) : LibraryItem()
+
+    object Untagged : LibraryItem()
+
+    object RecentlyAdded : LibraryItem()
     
     object CreatePlaylist : LibraryItem()
 }

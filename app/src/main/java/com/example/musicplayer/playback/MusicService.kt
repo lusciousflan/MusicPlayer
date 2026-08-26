@@ -40,6 +40,7 @@ class MusicService : MediaSessionService() {
     var isShuffle = false
     private val audioMap = mutableMapOf<String, AudioFile>()
     private var progressRunnable: Runnable? = null
+    private var sleepTimerRunnable: Runnable? = null
     private var loudnessEnhancer: LoudnessEnhancer? = null
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -137,6 +138,17 @@ class MusicService : MediaSessionService() {
         )
 
         when (intent?.action) {
+            "SET_SLEEP_TIMER" -> {
+                sleepTimerRunnable?.let(handler::removeCallbacks)
+                sleepTimerRunnable = null
+                val minutes = intent.getIntExtra("minutes", 0)
+                if (minutes > 0) {
+                    sleepTimerRunnable = Runnable {
+                        player.pause()
+                        sleepTimerRunnable = null
+                    }.also { handler.postDelayed(it, minutes * 60_000L) }
+                }
+            }
             "PLAY" -> {
                 val audio = intent.getSerializableExtra("audio") as? AudioFile
                 if (audio != null) {

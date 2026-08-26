@@ -11,14 +11,20 @@
         android:name=".MyApp"
         android:allowBackup="true"
         android:label="MusicPlayer"
-        android:theme="@style/Theme.AppCompat.Light.DarkActionBar">
+        android:theme="@style/Theme.AppCompat.DayNight.DarkActionBar">
 
         <activity android:name=".ui.activity.QueueActivity" />
-        <activity android:name=".ui.activity.PlayerActivity" />
+        <activity
+            android:name=".ui.activity.PlayerActivity"
+            android:theme="@style/Theme.AppCompat.DayNight.DarkActionBar" />
         <activity android:name=".ui.activity.TagListActivity"/>
         <activity android:name=".ui.activity.TagSongsActivity"/>
         <activity android:name=".ui.activity.PlaylistSongsActivity"/>
         <activity android:name=".ui.activity.CreatePlaylistActivity"/>
+        <activity android:name=".ui.activity.SearchActivity"/>
+        <activity android:name=".ui.activity.AlbumSongsActivity"/>
+        <activity android:name=".ui.activity.ArtistSongsActivity"/>
+        <activity android:name=".ui.activity.SettingsActivity" />
 
 
         <activity

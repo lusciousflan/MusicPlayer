@@ -17,8 +17,19 @@ class MusicRepository(private val dao: AudioDao) {
         dao.removeTag(audioId, tag)
     }
 
+    suspend fun deleteTag(tag: String) {
+        dao.removeTagFromAllAudio(tag)
+        dao.deleteTag(tag)
+    }
+
     suspend fun getTags(audioId: Long): List<String> {
         return dao.getTagsForAudio(audioId)
+    }
+
+    suspend fun getNote(audioId: Long): String = dao.getAudioNote(audioId).orEmpty()
+
+    suspend fun updateNote(audioId: Long, note: String) {
+        dao.updateAudioNote(audioId, note)
     }
 
     suspend fun getAllTags(): List<TagEntity> {
@@ -27,6 +38,14 @@ class MusicRepository(private val dao: AudioDao) {
 
     suspend fun getAudioByTag(tag: String): List<AudioEntity> {
         return dao.getAudioByTag(tag)
+    }
+
+    suspend fun getAudioWithoutTags(): List<AudioEntity> {
+        return dao.getAudioWithoutTags()
+    }
+
+    suspend fun getRecentlyAddedAudio(): List<AudioEntity> {
+        return dao.getRecentlyAddedAudio()
     }
 
     suspend fun createPlaylist(
@@ -49,6 +68,10 @@ class MusicRepository(private val dao: AudioDao) {
         id: Long
     ): PlaylistEntity {
         return dao.getPlaylistById(id)
+    }
+
+    suspend fun updatePlaylist(id: Long, name: String, expression: String) {
+        dao.updatePlaylist(id, name, expression)
     }
 
     suspend fun getAllAudioWithTags():

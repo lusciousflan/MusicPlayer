@@ -38,38 +38,39 @@
         android:text="音量補正 0.0 dB"
         android:layout_marginTop="12dp"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content"
+        android:visibility="gone"/>
 
     <SeekBar
         android:id="@+id/playerGainSeekBar"
         android:contentDescription="曲ごとの音量補正"
         android:max="1200"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content"
+        android:visibility="gone"/>
 
     <LinearLayout
-        android:orientation="horizontal"
+        android:orientation="vertical"
         android:layout_marginTop="16dp"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content">
-
-    <Button
-        android:id="@+id/playerPrev"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="⏮"/>
-
-    <Button
-        android:id="@+id/playerPlayPause"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="▶"/>
-
-    <Button
-        android:id="@+id/playerNext"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="⏭"/>
+        <LinearLayout
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+            <Button android:id="@+id/playerPrev" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⏮"/>
+            <Button android:id="@+id/playerPlayPause" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="▶"/>
+            <Button android:id="@+id/playerNext" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⏭"/>
+        </LinearLayout>
+        <LinearLayout
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+            <Button android:id="@+id/playerRepeatButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="リピート"/>
+            <Button android:id="@+id/playerShuffleButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="シャッフル"/>
+        </LinearLayout>
     </LinearLayout>
 
 </LinearLayout>

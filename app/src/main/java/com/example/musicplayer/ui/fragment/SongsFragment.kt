@@ -11,6 +11,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.widget.EditText
+import android.widget.Button
 import android.text.Editable
 import android.text.TextWatcher
 import androidx.fragment.app.Fragment
@@ -18,6 +19,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
 class SongsFragment : Fragment(R.layout.fragment_songs) {
+
+    private val grouping: String?
+        get() = arguments?.getString("grouping")
 
     private lateinit var adapter: AudioAdapter
 
@@ -28,7 +32,14 @@ class SongsFragment : Fragment(R.layout.fragment_songs) {
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
 
         // MediaStoreから返された現在の順番を反転して表示する
-        val audioList = (requireActivity() as MainActivity).getAudioFiles().reversed()
+        val audioList = (requireActivity() as MainActivity).getAudioFiles()
+            .let { songs ->
+                when (grouping) {
+                    "album" -> songs.sortedWith(compareBy({ it.albumId }, { it.title }))
+                    "artist" -> songs.sortedWith(compareBy({ it.artist.lowercase() }, { it.title }))
+                    else -> songs.reversed()
+                }
+            }
 
         adapter = AudioAdapter(
             audioList,
@@ -64,9 +75,34 @@ class SongsFragment : Fragment(R.layout.fragment_songs) {
             onEditTag = { audio ->
                 (requireActivity() as MainActivity)
                     .showTagDialog(audio)
+            },
+            onEditMemo = { audio ->
+                (requireActivity() as MainActivity).showNoteDialog(audio)
+            },
+            onExcludeDirectory = { audio ->
+                (requireActivity() as MainActivity).excludeDirectoryFor(audio)
+            },
+            onSelectionChanged = { count ->
+                view.findViewById<Button>(R.id.bulkTagButton).text =
+                    if (count == 0) "選択してタグを一括付与" else "タグを付与（${count}曲）"
             }
         )
         recyclerView.adapter = adapter
+
+        val bulkTagButton = view.findViewById<Button>(R.id.bulkTagButton)
+        bulkTagButton.setOnClickListener {
+            if (!adapter.isSelectionMode()) {
+                adapter.startSelection()
+            } else {
+                val selected = adapter.getSelectedAudios()
+                if (selected.isNotEmpty()) {
+                    (requireActivity() as MainActivity).showBulkTagDialog(selected) {
+                        adapter.stopSelection()
+                        bulkTagButton.text = "タグを一括付与"
+                    }
+                }
+            }
+        }
 
         view.findViewById<EditText>(R.id.searchEditText).addTextChangedListener(
             object : TextWatcher {

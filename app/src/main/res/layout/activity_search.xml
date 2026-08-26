@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="12dp">
+        <EditText android:id="@+id/searchInput" android:hint="曲名・アーティストを検索"
+            android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <TextView android:id="@+id/searchSongsLabel" android:text="楽曲" android:textStyle="bold" android:visibility="gone" android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <TextView android:id="@+id/searchSongsEmpty" android:text="該当する楽曲がありません" android:visibility="gone" android:padding="8dp" android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <com.example.musicplayer.ui.view.FullHeightRecyclerView android:id="@+id/searchSongs"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:nestedScrollingEnabled="false" />
+        <TextView android:id="@+id/searchArtistsLabel" android:text="アーティスト" android:textStyle="bold" android:visibility="gone" android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <TextView android:id="@+id/searchArtistsEmpty" android:text="該当するアーティストがありません" android:visibility="gone" android:padding="8dp" android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <com.example.musicplayer.ui.view.FullHeightRecyclerView android:id="@+id/searchArtists"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:nestedScrollingEnabled="false" />
+    </LinearLayout>
+</ScrollView>

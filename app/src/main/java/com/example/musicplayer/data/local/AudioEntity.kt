@@ -9,5 +9,7 @@ data class AudioEntity(
     val title: String,
     val artist: String,
     val uri: String,
-    val albumId: Long
+    val albumId: Long,
+    val note: String = "",
+    val addedAt: Long = 0L
 )

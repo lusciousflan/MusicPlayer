@@ -10,6 +10,7 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import android.widget.ArrayAdapter
 import android.content.Intent
+import androidx.appcompat.app.AlertDialog
 
 class TagListActivity : AppCompatActivity() {
 
@@ -19,6 +20,7 @@ class TagListActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_tag_list)
+        title = "タグ一覧"
 
         listView = findViewById(R.id.tagListView)
         val dao = (application as MyApp).database.audioDao()
@@ -42,6 +44,21 @@ class TagListActivity : AppCompatActivity() {
                 )
                 intent.putExtra("tag", names[position])
                 startActivity(intent)
+            }
+            listView.setOnItemLongClickListener { _, _, position, _ ->
+                val tag = names[position]
+                AlertDialog.Builder(this@TagListActivity)
+                    .setTitle("タグ削除")
+                    .setMessage("「$tag」をすべての曲から外して削除しますか？")
+                    .setPositiveButton("削除") { _, _ ->
+                        lifecycleScope.launch {
+                            repository.deleteTag(tag)
+                            recreate()
+                        }
+                    }
+                    .setNegativeButton("キャンセル", null)
+                    .show()
+                true
             }
         }
     }

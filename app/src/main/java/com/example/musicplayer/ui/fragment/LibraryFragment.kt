@@ -33,11 +33,14 @@ class LibraryFragment : Fragment(R.layout.fragment_library) {
         // loadLibrary()
     }
 
-    private fun loadLibrary() {
+    fun reloadLibrary() {
         viewLifecycleOwner.lifecycleScope.launch {
             val playlists = repository.getAllPlaylists()
             val tags = repository.getAllTags()
             val items = mutableListOf<LibraryItem>()
+
+            items.add(LibraryItem.RecentlyAdded)
+            items.add(LibraryItem.Untagged)
 
             items.add(LibraryItem.Header("プレイリスト"))
             items.add(LibraryItem.CreatePlaylist)
@@ -72,6 +75,12 @@ class LibraryFragment : Fragment(R.layout.fragment_library) {
                     startActivity(intent)
                 },
 
+                onUntaggedClick = {
+                    startActivity(Intent(requireContext(), TagSongsActivity::class.java).apply {
+                        putExtra("untagged", true)
+                    })
+                },
+
                 onPlaylistLongClick = { playlist ->
                     showDeletePlaylistDialog(
                         playlist
@@ -87,10 +96,15 @@ class LibraryFragment : Fragment(R.layout.fragment_library) {
             .setMessage(
                 "「${playlist.name}」を削除しますか？"
             )
+            .setNeutralButton("編集") { _, _ ->
+                startActivity(Intent(requireContext(), CreatePlaylistActivity::class.java).apply {
+                    putExtra("playlistId", playlist.id)
+                })
+            }
             .setPositiveButton("削除") { _, _ ->
                 viewLifecycleOwner.lifecycleScope.launch {
                     dao.deletePlaylist(playlist)
-                    loadLibrary()
+                    reloadLibrary()
                 }
             }
             .setNegativeButton("キャンセル", null)
@@ -99,7 +113,7 @@ class LibraryFragment : Fragment(R.layout.fragment_library) {
 
     override fun onResume() {
         super.onResume()
-        loadLibrary()
+        reloadLibrary()
     }
 
 }

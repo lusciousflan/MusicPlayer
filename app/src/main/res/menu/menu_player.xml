@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/action_toggle_gain" android:title="音量補正を表示/非表示" />
+    <item android:id="@+id/action_sleep_timer" android:title="スリープタイマー" />
+    <item android:id="@+id/action_queue" android:title="キュー" />
+</menu>

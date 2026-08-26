@@ -16,6 +16,8 @@ import android.content.ContentUris
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import android.widget.SeekBar
+import android.view.View
+import androidx.appcompat.app.AlertDialog
 
 class PlayerActivity : AppCompatActivity() {
 
@@ -26,6 +28,8 @@ class PlayerActivity : AppCompatActivity() {
     private lateinit var timeText: TextView
     private lateinit var gainSeekBar: SeekBar
     private lateinit var gainText: TextView
+    private lateinit var repeatButton: Button
+    private lateinit var shuffleButton: Button
     private var currentAudioId: Long = -1L
 
     private val receiver = object : BroadcastReceiver() {
@@ -58,6 +62,14 @@ class PlayerActivity : AppCompatActivity() {
                     val isPlaying = intent.getBooleanExtra("isPlaying", false)
                     playPause.text = if (isPlaying) "⏸" else "▶"
                 }
+
+                "REPEAT_STATE_CHANGED" -> {
+                    repeatButton.text = if (intent.getBooleanExtra("isRepeatAll", false)) "リピートON" else "リピートOFF"
+                }
+
+                "SHUFFLE_STATE_CHANGED" -> {
+                    shuffleButton.text = if (intent.getBooleanExtra("isShuffle", false)) "シャッフルON" else "シャッフルOFF"
+                }
             }
         }
     }
@@ -83,6 +95,11 @@ class PlayerActivity : AppCompatActivity() {
         timeText = findViewById(R.id.playerTimeText)
         gainSeekBar = findViewById(R.id.playerGainSeekBar)
         gainText = findViewById(R.id.playerGainText)
+        supportActionBar?.title = "再生中"
+        repeatButton = findViewById(R.id.playerRepeatButton)
+        shuffleButton = findViewById(R.id.playerShuffleButton)
+        repeatButton.setOnClickListener { startService(Intent(this, MusicService::class.java).setAction("TOGGLE_REPEAT")) }
+        shuffleButton.setOnClickListener { startService(Intent(this, MusicService::class.java).setAction("TOGGLE_SHUFFLE")) }
         gainSeekBar.max = 1200
         gainSeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(bar: SeekBar?, progress: Int, fromUser: Boolean) {
@@ -126,12 +143,53 @@ class PlayerActivity : AppCompatActivity() {
         })
     }
 
+    override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
+        menuInflater.inflate(R.menu.menu_player, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_toggle_gain -> {
+                val showing = gainSeekBar.visibility != View.VISIBLE
+                gainText.visibility = if (showing) View.VISIBLE else View.GONE
+                gainSeekBar.visibility = if (showing) View.VISIBLE else View.GONE
+                true
+            }
+            R.id.action_sleep_timer -> {
+                showSleepTimerDialog()
+                true
+            }
+            R.id.action_queue -> {
+                startActivity(Intent(this, QueueActivity::class.java))
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+    private fun showSleepTimerDialog() {
+        val values = arrayOf("オフ", "15分", "30分", "60分")
+        val minutes = intArrayOf(0, 15, 30, 60)
+        AlertDialog.Builder(this)
+            .setTitle("スリープタイマー")
+            .setItems(values) { _, which ->
+                startService(Intent(this, MusicService::class.java).apply {
+                    action = "SET_SLEEP_TIMER"
+                    putExtra("minutes", minutes[which])
+                })
+            }
+            .show()
+    }
+
     override fun onResume() {
         super.onResume()
         registerReceiver(receiver, IntentFilter("NOW_PLAYING"))
         registerReceiver(receiver, IntentFilter("PLAY_STATE_CHANGED"))
         registerReceiver(progressReceiver, IntentFilter("MUSIC_PROGRESS"))
         registerReceiver(receiver, IntentFilter("AUDIO_GAIN_CHANGED"))
+        registerReceiver(receiver, IntentFilter("REPEAT_STATE_CHANGED"))
+        registerReceiver(receiver, IntentFilter("SHUFFLE_STATE_CHANGED"))
 
         startService(Intent(this, MusicService::class.java).apply {
             action = "REQUEST_STATE"

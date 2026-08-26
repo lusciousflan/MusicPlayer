@@ -23,12 +23,23 @@ class CreatePlaylistActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         setContentView(R.layout.activity_create_playlist)
+        title = if (intent.hasExtra("playlistId")) "プレイリスト編集" else "プレイリスト作成"
         val dao = (application as MyApp).database.audioDao()
         repository = MusicRepository(dao)
         val nameEdit = findViewById<EditText>(R.id.playlistName)
         val container = findViewById<LinearLayout>(R.id.tagContainer)
         val expressionStatus = findViewById<TextView>(R.id.expressionStatus)
         val expressionEdit = findViewById<EditText>(R.id.expressionEdit)
+        val editingId = intent.getLongExtra("playlistId", -1L)
+
+        if (editingId != -1L) {
+            lifecycleScope.launch {
+                val playlist = repository.getPlaylistById(editingId)
+                nameEdit.setText(playlist.name)
+                expressionEdit.setText(playlist.expression)
+                title = "プレイリスト編集"
+            }
+        }
 
         expressionEdit.addTextChangedListener(
 
@@ -121,10 +132,11 @@ class CreatePlaylistActivity : AppCompatActivity() {
                     val expression = expressionEdit.text.toString()
                     val name = nameEdit.text.toString().ifBlank { expression }
 
-                    repository.createPlaylist(
-                        name = name,
-                        expression = expression
-                    )
+                    if (editingId == -1L) {
+                        repository.createPlaylist(name, expression)
+                    } else {
+                        repository.updatePlaylist(editingId, name, expression)
+                    }
 
                     finish()
                 }
