@@ -13,7 +13,8 @@ import com.example.musicplayer.ui.view.setOnClickListenerWithPressAnimation
 
 data class AlbumItem(val id: Long, val name: String)
 
-class AlbumAdapter(private val items: List<AlbumItem>) : RecyclerView.Adapter<AlbumAdapter.Holder>() {
+class AlbumAdapter(initialItems: List<AlbumItem>) : RecyclerView.Adapter<AlbumAdapter.Holder>() {
+    private var items = initialItems
     class Holder(view: View) : RecyclerView.ViewHolder(view) {
         val art: ImageView = view.findViewById(R.id.albumArt)
         val name: TextView = view.findViewById(R.id.albumName)
@@ -22,6 +23,10 @@ class AlbumAdapter(private val items: List<AlbumItem>) : RecyclerView.Adapter<Al
         LayoutInflater.from(parent.context).inflate(R.layout.item_album, parent, false)
     )
     override fun getItemCount() = items.size
+    fun updateList(newItems: List<AlbumItem>) {
+        items = newItems
+        notifyDataSetChanged()
+    }
     override fun onBindViewHolder(holder: Holder, position: Int) {
         val item = items[position]
         holder.name.text = item.name

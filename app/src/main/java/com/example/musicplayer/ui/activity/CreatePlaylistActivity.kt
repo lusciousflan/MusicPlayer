@@ -14,6 +14,10 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.widget.TextView
 import android.graphics.Color
+import android.widget.ArrayAdapter
+import android.widget.Filterable
+import android.widget.Filter
+import android.widget.Filter.FilterResults
 
 class CreatePlaylistActivity : AppCompatActivity() {
 
@@ -27,9 +31,8 @@ class CreatePlaylistActivity : AppCompatActivity() {
         val dao = (application as MyApp).database.audioDao()
         repository = MusicRepository(dao)
         val nameEdit = findViewById<EditText>(R.id.playlistName)
-        val container = findViewById<LinearLayout>(R.id.tagContainer)
         val expressionStatus = findViewById<TextView>(R.id.expressionStatus)
-        val expressionEdit = findViewById<EditText>(R.id.expressionEdit)
+        val expressionEdit = findViewById<AutoCompleteTextView>(R.id.expressionEdit)
         val editingId = intent.getLongExtra("playlistId", -1L)
 
         if (editingId != -1L) {
@@ -39,6 +42,32 @@ class CreatePlaylistActivity : AppCompatActivity() {
                 expressionEdit.setText(playlist.expression)
                 title = "プレイリスト編集"
             }
+        }
+
+        lifecycleScope.launch {
+            val tagNames = repository.getAllTags().map { it.name }
+            expressionEdit.setAdapter(
+                TagSuggestionAdapter(
+                    this@CreatePlaylistActivity,
+                    tagNames
+                )
+            )
+            expressionEdit.addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                    // 演算子の後ろだけを候補検索対象にするため、式の途中でも候補を出せる。
+                    val fragment = s?.toString().orEmpty()
+                        .split(Regex("[+|&()\\-]"))
+                        .lastOrNull()
+                        .orEmpty()
+                        .trim()
+                    if (fragment.isNotEmpty()) {
+                        (expressionEdit.adapter as? Filterable)?.filter?.filter(fragment)
+                        expressionEdit.post { expressionEdit.showDropDown() }
+                    }
+                }
+                override fun afterTextChanged(s: Editable?) = Unit
+            })
         }
 
         expressionEdit.addTextChangedListener(
@@ -113,34 +142,64 @@ class CreatePlaylistActivity : AppCompatActivity() {
             }
         )
 
-        lifecycleScope.launch {
+        findViewById<Button>(R.id.savePlaylist).setOnClickListener {
+            lifecycleScope.launch {
+                val expression = expressionEdit.text.toString()
+                val name = nameEdit.text.toString().ifBlank { expression }
 
-            val tags = repository.getAllTags()
-            val checkBoxes = mutableListOf<CheckBox>()
-
-            tags.forEach { tag ->
-                val checkBox = CheckBox(this@CreatePlaylistActivity)
-                checkBox.text = tag.name
-                container.addView(checkBox)
-                checkBoxes.add(checkBox)
-            }
-
-            findViewById<Button>(R.id.savePlaylist).setOnClickListener {
-
-                lifecycleScope.launch {
-
-                    val expression = expressionEdit.text.toString()
-                    val name = nameEdit.text.toString().ifBlank { expression }
-
-                    if (editingId == -1L) {
-                        repository.createPlaylist(name, expression)
-                    } else {
-                        repository.updatePlaylist(editingId, name, expression)
-                    }
-
-                    finish()
+                if (editingId == -1L) {
+                    repository.createPlaylist(name, expression)
+                } else {
+                    repository.updatePlaylist(editingId, name, expression)
                 }
+
+                finish()
             }
+        }
+    }
+}
+
+private class TagSuggestionAdapter(
+    context: CreatePlaylistActivity,
+    private val allTags: List<String>
+) : ArrayAdapter<String>(context, android.R.layout.simple_dropdown_item_1line, allTags) {
+    private val tagFilter = object : Filter() {
+        override fun performFiltering(constraint: CharSequence?): FilterResults {
+            val query = toHiragana(
+                constraint?.toString().orEmpty()
+                    .split(Regex("[+|&()\\-]"))
+                    .lastOrNull()
+                    .orEmpty()
+                    .trim()
+            )
+            val matches = if (query.isEmpty()) allTags else allTags.filter {
+                toHiragana(it).contains(query)
+            }
+            return FilterResults().apply {
+                values = matches
+                count = matches.size
+            }
+        }
+
+        override fun publishResults(constraint: CharSequence?, results: FilterResults?) {
+            clear()
+            @Suppress("UNCHECKED_CAST")
+            addAll(results?.values as? List<String> ?: emptyList())
+            notifyDataSetChanged()
+        }
+    }
+
+    override fun getFilter(): Filter = tagFilter
+
+    private fun toHiragana(value: String): String = buildString(value.length) {
+        value.forEach { character ->
+            append(
+                if (character in '\u30A1'..'\u30F6') {
+                    (character.code - 0x60).toChar()
+                } else {
+                    character
+                }
+            )
         }
     }
 }

@@ -15,5 +15,11 @@
         <com.example.musicplayer.ui.view.FullHeightRecyclerView android:id="@+id/searchArtists"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:nestedScrollingEnabled="false" />
+        <TextView android:id="@+id/searchAlbumsLabel" android:text="アルバム" android:textStyle="bold" android:visibility="gone" android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <TextView android:id="@+id/searchAlbumsEmpty" android:text="該当するアルバムがありません" android:visibility="gone" android:padding="8dp" android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <com.example.musicplayer.ui.view.FullHeightRecyclerView android:id="@+id/searchAlbums"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:nestedScrollingEnabled="false" />
+        <include layout="@layout/mini_player" />
     </LinearLayout>
 </ScrollView>

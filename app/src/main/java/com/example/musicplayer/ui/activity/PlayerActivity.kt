@@ -58,7 +58,7 @@ class PlayerActivity : AppCompatActivity() {
                     gainSeekBar.progress = gain
                 }
 
-                "PLAY_STATE_CHANGED" -> {
+                "PLAYING_STATE_CHANGED" -> {
                     val isPlaying = intent.getBooleanExtra("isPlaying", false)
                     playPause.text = if (isPlaying) "⏸" else "▶"
                 }
@@ -185,7 +185,7 @@ class PlayerActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         registerReceiver(receiver, IntentFilter("NOW_PLAYING"))
-        registerReceiver(receiver, IntentFilter("PLAY_STATE_CHANGED"))
+        registerReceiver(receiver, IntentFilter("PLAYING_STATE_CHANGED"))
         registerReceiver(progressReceiver, IntentFilter("MUSIC_PROGRESS"))
         registerReceiver(receiver, IntentFilter("AUDIO_GAIN_CHANGED"))
         registerReceiver(receiver, IntentFilter("REPEAT_STATE_CHANGED"))

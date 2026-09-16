@@ -9,11 +9,13 @@ sealed class LibraryItem {
     ) : LibraryItem()
 
     data class Playlist(
-        val playlist: PlaylistEntity
+        val playlist: PlaylistEntity,
+        val songCount: Int
     ) : LibraryItem()
 
     data class Tag(
-        val tag: TagEntity
+        val tag: TagEntity,
+        val songCount: Int
     ) : LibraryItem()
 
     object Untagged : LibraryItem()

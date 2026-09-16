@@ -15,10 +15,13 @@ import com.example.musicplayer.model.isVisibleAudioTitle
 import com.example.musicplayer.data.local.isExcludedPath
 import com.example.musicplayer.playback.MusicService
 import com.example.musicplayer.ui.adapter.AudioAdapter
+import com.example.musicplayer.ui.showAudioSortDialog
+import com.example.musicplayer.ui.MiniPlayerController
 
 class ArtistSongsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState); setContentView(R.layout.activity_playlist_songs)
+        MiniPlayerController(this)
         val artistName = intent.getStringExtra("artist") ?: return; title = artistName
         val songs = mutableListOf<AudioFile>(); val uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
         val projection = mutableListOf(MediaStore.Audio.Media._ID, MediaStore.Audio.Media.TITLE, MediaStore.Audio.Media.ARTIST, MediaStore.Audio.Media.ALBUM_ID).apply { add(if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) MediaStore.Audio.Media.RELATIVE_PATH else MediaStore.Audio.Media.DATA) }
@@ -27,6 +30,13 @@ class ArtistSongsActivity : AppCompatActivity() {
             val id = c.getColumnIndexOrThrow(MediaStore.Audio.Media._ID); val title = c.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE); val artist = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST); val album = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID); val path = c.getColumnIndexOrThrow(if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) MediaStore.Audio.Media.RELATIVE_PATH else MediaStore.Audio.Media.DATA)
             while (c.moveToNext()) { val t = c.getString(title); if (isVisibleAudioTitle(t) && !isExcludedPath(this, c.getString(path).orEmpty())) { val songId = c.getLong(id); songs += AudioFile(songId, t, c.getString(artist), ContentUris.withAppendedId(uri, songId).toString(), c.getLong(album)) } }
         }
-        findViewById<RecyclerView>(R.id.recyclerView).apply { layoutManager = LinearLayoutManager(this@ArtistSongsActivity); adapter = AudioAdapter(songs, { id -> AlbumSongsActivity.albumArtUri(id) }, { _, index -> startService(Intent(this@ArtistSongsActivity, MusicService::class.java).apply { action = "PLAY_PLAYLIST_FROM_INDEX"; putExtra("audioList", ArrayList(songs)); putExtra("index", index) }) }, { }, { }) }
+        findViewById<RecyclerView>(R.id.recyclerView).apply {
+            layoutManager = LinearLayoutManager(this@ArtistSongsActivity)
+            val songsAdapter = AudioAdapter(songs, { id -> AlbumSongsActivity.albumArtUri(id) }, { _, index -> startService(Intent(this@ArtistSongsActivity, MusicService::class.java).apply { action = "PLAY_PLAYLIST_FROM_INDEX"; putExtra("audioList", ArrayList(songs)); putExtra("index", index) }) }, { }, { })
+            adapter = songsAdapter
+            this@ArtistSongsActivity.findViewById<android.view.View>(R.id.sortButton).setOnClickListener {
+                showAudioSortDialog(this@ArtistSongsActivity, songs, songsAdapter)
+            }
+        }
     }
 }

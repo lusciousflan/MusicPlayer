@@ -11,5 +11,6 @@ data class AudioEntity(
     val uri: String,
     val albumId: Long,
     val note: String = "",
-    val addedAt: Long = 0L
+    val addedAt: Long = 0L,
+    val playCount: Long = 0L
 )

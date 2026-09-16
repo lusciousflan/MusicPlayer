@@ -15,6 +15,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.appcompat.app.AlertDialog
 import kotlinx.coroutines.launch
+import com.example.musicplayer.domain.playlist.PlaylistEvaluator
+import com.example.musicplayer.domain.playlist.PlaylistSyntaxException
+import com.example.musicplayer.domain.playlist.tokenize
 
 class LibraryFragment : Fragment(R.layout.fragment_library) {
     private lateinit var repository: MusicRepository
@@ -37,6 +40,7 @@ class LibraryFragment : Fragment(R.layout.fragment_library) {
         viewLifecycleOwner.lifecycleScope.launch {
             val playlists = repository.getAllPlaylists()
             val tags = repository.getAllTags()
+            val allAudio = repository.getAllAudioWithTags()
             val items = mutableListOf<LibraryItem>()
 
             items.add(LibraryItem.RecentlyAdded)
@@ -45,14 +49,19 @@ class LibraryFragment : Fragment(R.layout.fragment_library) {
             items.add(LibraryItem.Header("プレイリスト"))
             items.add(LibraryItem.CreatePlaylist)
 
-            playlists.forEach {
-                items.add(LibraryItem.Playlist(it))
+            playlists.forEach { playlist ->
+                val songCount = try {
+                    PlaylistEvaluator(tokenize(playlist.expression), allAudio).evaluate().size
+                } catch (_: PlaylistSyntaxException) {
+                    0
+                }
+                items.add(LibraryItem.Playlist(playlist, songCount))
             }
 
             items.add(LibraryItem.Header("タグ"))
 
-            tags.forEach {
-                items.add(LibraryItem.Tag(it))
+            tags.forEach { tag ->
+                items.add(LibraryItem.Tag(tag, dao.getAudioCountByTag(tag.name)))
             }
 
             recyclerView.adapter = LibraryAdapter(

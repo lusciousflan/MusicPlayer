@@ -58,6 +58,9 @@ class MusicService : MediaSessionService() {
         super.onCreate()
 
         player = ExoPlayer.Builder(this).build()
+        // UI に表示する初期値と ExoPlayer の実際のリピート状態を一致させる。
+        player.repeatMode = Player.REPEAT_MODE_ALL
+        isRepeatAll = player.repeatMode == Player.REPEAT_MODE_ALL
         MusicService.player = player
         mediaSession = MediaSession.Builder(this, player).build()
         player.addListener(
@@ -80,8 +83,21 @@ class MusicService : MediaSessionService() {
                     currentArtist = audio?.artist ?: ""
                     currentAlbumId = audio?.albumId ?: -1
                     applyGainFor(audio)
+                    if (audio != null) {
+                        serviceScope.launch(Dispatchers.IO) {
+                            (application as MyApp).database.audioDao().incrementPlayCount(audio.id)
+                        }
+                    }
                     sendNowPlaying()
                     updateNotification()
+                }
+
+                override fun onRepeatModeChanged(repeatMode: Int) {
+                    isRepeatAll = repeatMode == Player.REPEAT_MODE_ALL
+                    sendBroadcast(
+                        Intent("REPEAT_STATE_CHANGED")
+                            .putExtra("isRepeatAll", isRepeatAll)
+                    )
                 }
             }
         )
@@ -289,6 +305,7 @@ class MusicService : MediaSessionService() {
                 sendNowPlaying()
                 sendCurrentGain()
                 sendBroadcast(Intent("PLAYING_STATE_CHANGED").putExtra("isPlaying", player.isPlaying))
+                isRepeatAll = player.repeatMode == Player.REPEAT_MODE_ALL
                 sendBroadcast(Intent("REPEAT_STATE_CHANGED").putExtra("isRepeatAll", isRepeatAll))
                 sendBroadcast(Intent("SHUFFLE_STATE_CHANGED").putExtra("isShuffle", isShuffle))
             }

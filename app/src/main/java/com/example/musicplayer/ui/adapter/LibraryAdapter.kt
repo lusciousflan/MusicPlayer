@@ -34,6 +34,8 @@ class LibraryAdapter(
         val text: TextView = view.findViewById(android.R.id.text1)
         val playlistName: TextView? = view.findViewById(R.id.playlistName)
         val playlistExpression: TextView? = view.findViewById(R.id.playlistExpression)
+        val tagName: TextView? = view.findViewById(R.id.tagName)
+        val tagSongCount: TextView? = view.findViewById(R.id.tagSongCount)
     }
 
     override fun onCreateViewHolder(
@@ -42,8 +44,11 @@ class LibraryAdapter(
     ): ViewHolder {
 
         val view = LayoutInflater.from(parent.context).inflate(
-            if (viewType == 1) R.layout.item_library_playlist
-            else android.R.layout.simple_list_item_1,
+            when (viewType) {
+                1 -> R.layout.item_library_playlist
+                2 -> R.layout.item_library_tag
+                else -> android.R.layout.simple_list_item_1
+            },
             parent,
             false
         )
@@ -56,7 +61,11 @@ class LibraryAdapter(
     }
 
     override fun getItemViewType(position: Int): Int =
-        if (items[position] is LibraryItem.Playlist) 1 else 0
+        when (items[position]) {
+            is LibraryItem.Playlist -> 1
+            is LibraryItem.Tag -> 2
+            else -> 0
+        }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
 
@@ -76,7 +85,7 @@ class LibraryAdapter(
             is LibraryItem.Playlist -> {
                 holder.text.visibility = View.GONE
                 holder.playlistName?.text = item.playlist.name
-                holder.playlistExpression?.text = item.playlist.expression
+                holder.playlistExpression?.text = "${item.playlist.expression}（${item.songCount}曲）"
 
                 holder.itemView.setOnClickListenerWithPressAnimation {
                     onPlaylistClick(item.playlist)
@@ -89,13 +98,10 @@ class LibraryAdapter(
             }
 
             is LibraryItem.Tag -> {
-                holder.text.visibility = View.VISIBLE
-                holder.text.text = item.tag.name
-                holder.text.textSize = 18f
-                holder.text.setTextColor(
-                    primaryTextColor(holder.text)
-                )
-                holder.text.setTypeface(null, android.graphics.Typeface.NORMAL)
+                holder.text.visibility = View.GONE
+                holder.tagName?.text = item.tag.name
+                holder.tagSongCount?.text = "${item.songCount}曲"
+                holder.tagName?.setTextColor(primaryTextColor(holder.tagName))
 
                 holder.itemView.setOnClickListenerWithPressAnimation {
                     onTagClick(item.tag)

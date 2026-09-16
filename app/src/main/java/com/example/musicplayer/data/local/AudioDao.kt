@@ -17,6 +17,9 @@ interface AudioDao {
     @Query("SELECT gainDbHundredths FROM audio_volume WHERE audioId = :audioId")
     suspend fun getAudioGainDbHundredths(audioId: Long): Int?
 
+    @Query("UPDATE audio SET playCount = playCount + 1 WHERE id = :audioId")
+    suspend fun incrementPlayCount(audioId: Long)
+
     @Query("SELECT note FROM audio WHERE id = :audioId")
     suspend fun getAudioNote(audioId: Long): String?
 
@@ -87,6 +90,9 @@ interface AudioDao {
         WHERE AudioTagCrossRef.tagName = :tag
     """)
     suspend fun getAudioByTag(tag: String): List<AudioEntity>
+
+    @Query("SELECT COUNT(*) FROM AudioTagCrossRef WHERE tagName = :tag")
+    suspend fun getAudioCountByTag(tag: String): Int
 
     @Query("""
         SELECT audio.* FROM audio

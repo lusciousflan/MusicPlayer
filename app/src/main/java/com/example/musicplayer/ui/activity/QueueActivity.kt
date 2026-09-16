@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.RecyclerView
 import android.net.Uri
 import android.content.Intent
 import android.content.ContentUris
+import com.example.musicplayer.ui.MiniPlayerController
 
 class QueueActivity : AppCompatActivity() {
 
@@ -19,12 +20,14 @@ class QueueActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_queue)
+        MiniPlayerController(this)
         title = "キュー"
 
         recyclerView = findViewById(R.id.queueRecyclerView)
 
+        val queueSongs = MusicService.getQueue()
         adapter = AudioAdapter(
-            MusicService.getQueue(),
+            queueSongs,
             getAlbumArtUri = { albumId: Long ->
                 ContentUris.withAppendedId(
                     Uri.parse("content://media/external/audio/albumart"),

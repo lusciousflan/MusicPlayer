@@ -19,6 +19,8 @@ import android.widget.Toast
 import android.view.Menu
 import android.view.MenuItem
 import android.content.Intent
+import com.example.musicplayer.ui.showAudioSortDialog
+import com.example.musicplayer.ui.MiniPlayerController
 
 class PlaylistSongsActivity : AppCompatActivity() {
 
@@ -29,6 +31,7 @@ class PlaylistSongsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_playlist_songs)
+        MiniPlayerController(this)
 
         recyclerView = findViewById(R.id.recyclerView)
 
@@ -57,7 +60,9 @@ class PlaylistSongsActivity : AppCompatActivity() {
                         title = it.audio.title,
                         artist = it.audio.artist,
                         uri = it.audio.uri,
-                        albumId = it.audio.albumId
+                        albumId = it.audio.albumId,
+                        addedAt = it.audio.addedAt,
+                        playCount = it.audio.playCount
                     )
                 }
                 currentSongs = audioFiles
@@ -84,6 +89,12 @@ class PlaylistSongsActivity : AppCompatActivity() {
                     onAddToQueue = { },
                     onEditTag = { }
                 )
+                val songsAdapter = recyclerView.adapter as AudioAdapter
+                findViewById<android.view.View>(R.id.sortButton).setOnClickListener {
+                    showAudioSortDialog(this@PlaylistSongsActivity, currentSongs, songsAdapter) {
+                        currentSongs = it
+                    }
+                }
 
             } catch (e: PlaylistSyntaxException) {
 

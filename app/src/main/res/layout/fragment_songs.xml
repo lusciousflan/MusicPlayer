@@ -5,26 +5,31 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <EditText
-        android:id="@+id/searchEditText"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="8dp"
-        android:hint="曲名・アーティストを検索"
-        android:inputType="text"
-        android:singleLine="true"
-        android:imeOptions="actionSearch"
-        android:importantForAutofill="no" />
-
-    <Button
-        android:id="@+id/bulkTagButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="タグを一括付与" />
+        android:gravity="end"
+        android:orientation="horizontal">
+        <Button
+            android:id="@+id/sortButton"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="並び順を変更"
+            android:text="↕" />
+        <Button
+            android:id="@+id/bulkTagButton"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="タグを一括付与"
+            android:text="🏷" />
+    </LinearLayout>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1" />
+
 </LinearLayout>

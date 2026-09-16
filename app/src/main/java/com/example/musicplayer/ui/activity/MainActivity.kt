@@ -374,7 +374,7 @@ class MainActivity : AppCompatActivity() {
             val checked = tags.map { it in currentTags }.toBooleanArray()
 
             AlertDialog.Builder(this@MainActivity)
-                .setTitle("タグ編集")
+                .setTitle("${audio.title}のタグを編集")
                 .setMultiChoiceItems(tags.toTypedArray(), checked) { _, which, isChecked ->
                     checked[which] = isChecked
                 }
@@ -390,6 +390,9 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 .setNegativeButton("キャンセル", null)
+                .setNeutralButton("新規タグ作成") { _, _ ->
+                    showCreateTagDialog(audio)
+                }
                 .show()
         }
     }

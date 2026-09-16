@@ -15,19 +15,26 @@ import com.example.musicplayer.model.AudioFile
 import com.example.musicplayer.model.isVisibleAudioTitle
 import com.example.musicplayer.data.local.isExcludedPath
 import com.example.musicplayer.ui.adapter.AudioAdapter
+import com.example.musicplayer.ui.showAudioSortDialog
+import com.example.musicplayer.ui.MiniPlayerController
 
 class AlbumSongsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_playlist_songs)
+        MiniPlayerController(this)
         val albumId = intent.getLongExtra("albumId", -1)
         title = intent.getStringExtra("albumName") ?: "アルバム"
-        val songs = loadSongs(albumId)
+        var songs = loadSongs(albumId)
         findViewById<RecyclerView>(R.id.recyclerView).apply {
             layoutManager = LinearLayoutManager(this@AlbumSongsActivity)
             adapter = AudioAdapter(songs, { id -> albumArtUri(id) },
                 onClick = { audio, index -> startService(Intent(this@AlbumSongsActivity, com.example.musicplayer.playback.MusicService::class.java).apply { action = "PLAY_PLAYLIST_FROM_INDEX"; putExtra("audioList", ArrayList(songs)); putExtra("index", index) }) },
                 onAddToQueue = { }, onEditTag = { })
+            val songsAdapter = adapter as AudioAdapter
+            this@AlbumSongsActivity.findViewById<android.view.View>(R.id.sortButton).setOnClickListener {
+                showAudioSortDialog(this@AlbumSongsActivity, songs, songsAdapter) { songs = it }
+            }
         }
     }
     private fun loadSongs(albumId: Long): List<AudioFile> {

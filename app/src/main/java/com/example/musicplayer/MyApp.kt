@@ -17,6 +17,7 @@ class MyApp : Application() {
         .addMigrations(MIGRATION_5_6)
         .addMigrations(MIGRATION_6_7)
         .addMigrations(MIGRATION_7_8)
+        .addMigrations(MIGRATION_8_9)
         .build()
     }
 
@@ -36,6 +37,14 @@ class MyApp : Application() {
         val MIGRATION_7_8 = object : Migration(7, 8) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL("ALTER TABLE audio ADD COLUMN addedAt INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "ALTER TABLE audio ADD COLUMN playCount INTEGER NOT NULL DEFAULT 0"
+                )
             }
         }
     }

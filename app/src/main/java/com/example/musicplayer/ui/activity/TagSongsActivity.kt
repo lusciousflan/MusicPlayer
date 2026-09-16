@@ -5,6 +5,8 @@ import com.example.musicplayer.MyApp
 import com.example.musicplayer.data.local.MusicRepository
 import com.example.musicplayer.model.AudioFile
 import com.example.musicplayer.ui.adapter.AudioAdapter
+import com.example.musicplayer.ui.showAudioSortDialog
+import com.example.musicplayer.ui.MiniPlayerController
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -22,6 +24,7 @@ class TagSongsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_tag_songs)
+        MiniPlayerController(this)
 
         recyclerView = findViewById(R.id.recyclerView)
         val isUntagged = intent.getBooleanExtra("untagged", false)
@@ -51,7 +54,9 @@ class TagSongsActivity : AppCompatActivity() {
                     title = it.title,
                     artist = it.artist,
                     uri = it.uri,
-                    albumId = it.albumId
+                    albumId = it.albumId,
+                    addedAt = it.addedAt,
+                    playCount = it.playCount
                 )
             }
 
@@ -68,6 +73,10 @@ class TagSongsActivity : AppCompatActivity() {
                 onAddToQueue = { },
                 onEditTag = { }
             )
+            val songsAdapter = recyclerView.adapter as AudioAdapter
+            findViewById<android.view.View>(R.id.sortButton).setOnClickListener {
+                showAudioSortDialog(this@TagSongsActivity, audioFiles, songsAdapter)
+            }
         }
     }
 }
