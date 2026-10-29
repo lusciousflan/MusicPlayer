@@ -1,12 +1,12 @@
 package com.example.musicplayer.ui.activity
 
 import com.example.musicplayer.R
+import com.example.musicplayer.playback.startMusicServiceWithAudioList
 import com.example.musicplayer.data.local.albumArtUri
 import com.example.musicplayer.MyApp
 import com.example.musicplayer.data.local.MusicRepository
 import com.example.musicplayer.domain.playlist.*
 import com.example.musicplayer.model.AudioFile
-import com.example.musicplayer.playback.MusicService
 import com.example.musicplayer.ui.adapter.AudioAdapter
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.RecyclerView
@@ -17,7 +17,6 @@ import kotlinx.coroutines.launch
 import android.widget.Toast
 import android.view.Menu
 import android.view.MenuItem
-import android.content.Intent
 import com.example.musicplayer.ui.showAudioSortDialog
 import com.example.musicplayer.ui.MiniPlayerController
 
@@ -70,15 +69,9 @@ class PlaylistSongsActivity : AppCompatActivity() {
                     list = audioFiles,
                     getAlbumArtUri = ::albumArtUri,
                     onClick = { _, position ->
-                        val intent = Intent(
-                            this@PlaylistSongsActivity,
-                            MusicService::class.java
-                        ).apply {
-                            action = "PLAY_PLAYLIST_FROM_INDEX"
-                            putExtra("audioList", ArrayList(currentSongs))
+                        startMusicServiceWithAudioList("PLAY_PLAYLIST_FROM_INDEX", currentSongs) {
                             putExtra("index", position)
                         }
-                        startService(intent)
                     },
                     onAddToQueue = { },
                     onEditTag = { }
@@ -118,16 +111,7 @@ class PlaylistSongsActivity : AppCompatActivity() {
         when (item.itemId) {
             R.id.action_add_queue -> {
 
-                val intent = Intent(
-                        this,
-                        MusicService::class.java
-                    )
-                intent.action = "ADD_LIST_TO_QUEUE"
-                intent.putExtra(
-                    "audioList",
-                    ArrayList(currentSongs)
-                )
-                startService(intent)
+                startMusicServiceWithAudioList("ADD_LIST_TO_QUEUE", currentSongs)
 
                 Toast.makeText(
                     this,
@@ -139,16 +123,7 @@ class PlaylistSongsActivity : AppCompatActivity() {
             }
 
             R.id.action_add_queue_shuffle -> {
-                val intent = Intent(
-                    this,
-                    MusicService::class.java
-                )
-                intent.action = "PLAY_LIST_SHUFFLED"
-                intent.putExtra(
-                    "audioList",
-                    ArrayList(currentSongs)
-                )
-                startService(intent)
+                startMusicServiceWithAudioList("PLAY_LIST_SHUFFLED", currentSongs)
 
                 Toast.makeText(
                     this,

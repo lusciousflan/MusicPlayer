@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.musicplayer.R
+import com.example.musicplayer.playback.startMusicServiceWithAudioList
 import com.example.musicplayer.model.AudioFile
 import com.example.musicplayer.data.local.albumArtUri
 import com.example.musicplayer.data.local.queryAudioFiles
@@ -26,7 +27,7 @@ class AlbumSongsActivity : AppCompatActivity() {
         findViewById<RecyclerView>(R.id.recyclerView).apply {
             layoutManager = LinearLayoutManager(this@AlbumSongsActivity)
             adapter = AudioAdapter(songs, ::albumArtUri,
-                onClick = { audio, index -> startService(Intent(this@AlbumSongsActivity, com.example.musicplayer.playback.MusicService::class.java).apply { action = "PLAY_PLAYLIST_FROM_INDEX"; putExtra("audioList", ArrayList(songs)); putExtra("index", index) }) },
+                onClick = { _, index -> startMusicServiceWithAudioList("PLAY_PLAYLIST_FROM_INDEX", songs) { putExtra("index", index) } },
                 onAddToQueue = { }, onEditTag = { })
             val songsAdapter = adapter as AudioAdapter
             this@AlbumSongsActivity.findViewById<android.view.View>(R.id.sortButton).setOnClickListener {

@@ -223,9 +223,7 @@ class MusicService : MediaSessionService() {
                 }
             }
             "ADD_LIST_TO_QUEUE" -> {
-                val audios = intent.getSerializableExtra(
-                        "audioList"
-                    ) as? ArrayList<AudioFile>
+                val audios = AudioListHandoff.take(intent)
 
                 if (audios != null) {
                     if (isShuffle) {
@@ -236,9 +234,7 @@ class MusicService : MediaSessionService() {
                 }
             }
             "PLAY_LIST_SHUFFLED" -> {
-                val audios = intent.getSerializableExtra(
-                        "audioList"
-                    ) as? ArrayList<AudioFile>
+                val audios = AudioListHandoff.take(intent)
 
                 isShuffle = true
                 val shuffleIntent = Intent("SHUFFLE_STATE_CHANGED")
@@ -248,9 +244,7 @@ class MusicService : MediaSessionService() {
                 playAudioList(audios?.shuffled().orEmpty(), 0)
             }
             "PLAY_PLAYLIST_FROM_INDEX" -> {
-                val audios = intent.getSerializableExtra(
-                    "audioList"
-                ) as? ArrayList<AudioFile>
+                val audios = AudioListHandoff.take(intent)
                 val index = intent.getIntExtra("index", -1)
 
                 if (audios.isNullOrEmpty() || index !in audios.indices) return START_STICKY
@@ -341,33 +335,21 @@ class MusicService : MediaSessionService() {
     }
 
     private fun shuffleCurrentQueue() {
-        val currentQueue = getQueue()
-        if (currentQueue.isEmpty()) return
-
+        val count = player.mediaItemCount
+        if (count == 0) return
         val currentIndex = player.currentMediaItemIndex
-        val currentAudio = player.currentMediaItem?.localConfiguration?.tag as? AudioFile
-            ?: currentQueue.getOrNull(currentIndex)
 
         // シャッフルを切り替えても、再生中の曲と再生位置は維持する。
         // 現在曲を先頭に固定し、それ以外の曲だけをシャッフルする。
-        val shuffled = if (currentAudio != null) {
-            listOf(currentAudio) + currentQueue
-                .filter { it.id != currentAudio.id }
-                .shuffled()
-        } else {
-            currentQueue.shuffled()
-        }
-
-        // プレイリストを差し替えず、既存の MediaItem を移動することで、
-        // 再生中のメディアローダーを維持し、一瞬の停止を防ぐ。
-        shuffled.forEachIndexed { targetIndex, audio ->
-            val currentItemIndex = (0 until player.mediaItemCount).firstOrNull { index ->
-                player.getMediaItemAt(index).mediaId == audio.id.toString()
-            } ?: return@forEachIndexed
-
-            if (currentItemIndex != targetIndex) {
-                player.moveMediaItem(currentItemIndex, targetIndex)
-            }
+        // 現在曲そのものには触れず、前後の曲だけをまとめて入れ替えるので再生は途切れない。
+        // （1曲ずつ移動すると、曲数が多いときに画面が応答しなくなるほど重くなる）
+        val others = (0 until count)
+            .filter { it != currentIndex }
+            .map { player.getMediaItemAt(it) }
+            .shuffled()
+        player.replaceMediaItems(currentIndex + 1, count, others)
+        if (currentIndex > 0) {
+            player.removeMediaItems(0, currentIndex)
         }
 
         sendNowPlaying()
@@ -376,62 +358,42 @@ class MusicService : MediaSessionService() {
     private fun playAudioList(audios: List<AudioFile>, startIndex: Int) {
         if (audios.isEmpty() || startIndex !in audios.indices) return
 
-        player.clearMediaItems()
-        audios.forEach { audio ->
-            audioMap[audio.id.toString()] = audio
-            player.addMediaItem(audio.toMediaItem())
-        }
+        audios.forEach { audio -> audioMap[audio.id.toString()] = audio }
+        // 1曲ずつ追加するとキュー全体の再構築と通知が曲数分発生して重いため、まとめて差し替える。
+        player.setMediaItems(audios.map { it.toMediaItem() }, startIndex, 0)
 
         player.prepare()
-        player.seekTo(startIndex, 0)
         player.play()
         enterForegroundPlayback()
         sendNowPlaying()
     }
 
+    // キューの編集は、曲数が多くても ExoPlayer への操作が1回で済むようにまとめて行う。
+    // 1曲ずつ追加すると、そのたびにキュー全体の再構築と MediaSession への通知が発生して重くなる。
+
     private fun mixShuffledQueueIntoExisting(newItems: List<AudioFile>) {
-        if (newItems.isEmpty()) return
+        val audios = audiosNotInQueue(queuedMediaIds(), newItems)
+        if (audios.isEmpty()) return
+        audios.forEach { audio -> audioMap[audio.id.toString()] = audio }
 
-        val shuffledItems = newItems.shuffled()
+        // 再生中の曲より後ろ(再生予定の曲)に、新しい曲をランダムな位置で混ぜる。
+        // 再生中の曲には触れないので、再生は途切れない。
         val anchorIndex = getInsertionIndexAfterCurrent()
-        var currentTail = player.mediaItemCount
-
-        shuffledItems.forEach { audio ->
-            val alreadyExists = (0 until player.mediaItemCount).any { index ->
-                player.getMediaItemAt(index).mediaId == audio.id.toString()
-            }
-            if (!alreadyExists) {
-                audioMap[audio.id.toString()] = audio
-
-                val maxInsertIndex = currentTail.coerceAtLeast(anchorIndex)
-                val randomOffset = if (maxInsertIndex > anchorIndex) {
-                    (0 until (maxInsertIndex - anchorIndex + 1)).random()
-                } else {
-                    0
-                }
-                val insertAt = (anchorIndex + randomOffset).coerceAtMost(player.mediaItemCount)
-
-                player.addMediaItem(insertAt, audio.toMediaItem())
-                currentTail = player.mediaItemCount
-            }
-        }
+        val upcoming = (anchorIndex until player.mediaItemCount).map { player.getMediaItemAt(it) }
+        val mixed = mixRandomly(upcoming, audios.map { it.toMediaItem() })
+        player.replaceMediaItems(anchorIndex, player.mediaItemCount, mixed)
     }
 
-    private fun addListToQueueAfterCurrent(audios: List<AudioFile>) {
-        val startIndex = getInsertionIndexAfterCurrent()
-        var offset = 0
+    private fun addListToQueueAfterCurrent(newItems: List<AudioFile>) {
+        val audios = audiosNotInQueue(queuedMediaIds(), newItems)
+        if (audios.isEmpty()) return
+        audios.forEach { audio -> audioMap[audio.id.toString()] = audio }
 
-        audios.forEach { audio ->
-            val alreadyExists = (0 until player.mediaItemCount).any { index ->
-                player.getMediaItemAt(index).mediaId == audio.id.toString()
-            }
-            if (!alreadyExists) {
-                audioMap[audio.id.toString()] = audio
-                player.addMediaItem(startIndex + offset, audio.toMediaItem())
-                offset += 1
-            }
-        }
+        player.addMediaItems(getInsertionIndexAfterCurrent(), audios.map { it.toMediaItem() })
     }
+
+    private fun queuedMediaIds(): Set<String> =
+        (0 until player.mediaItemCount).mapTo(HashSet()) { player.getMediaItemAt(it).mediaId }
 
     private fun getInsertionIndexAfterCurrent(): Int {
         val current = player.currentMediaItemIndex
