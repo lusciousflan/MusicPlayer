@@ -28,6 +28,10 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+    testOptions {
+        // Robolectric で Android のリソースやマニフェストを読めるようにする
+        unitTests.includeAndroidResources = true
+    }
 }
 
 dependencies {
@@ -47,6 +51,12 @@ dependencies {
     implementation "androidx.media3:media3-exoplayer:1.7.1"
     implementation "androidx.media3:media3-session:1.7.1"
     implementation "androidx.media3:media3-ui:1.7.1"
+
+    // テストはすべて PC 上(JVM)で実行する。Room など Android に依存する部分は Robolectric で動かす。
+    testImplementation "junit:junit:4.13.2"
+    testImplementation "org.robolectric:robolectric:4.11.1"
+    testImplementation "androidx.test:core:1.5.0"
+    testImplementation "androidx.test.ext:junit:1.1.5"
 }
 
 kotlin {
