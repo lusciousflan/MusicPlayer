@@ -191,6 +191,7 @@ class MusicService : MediaSessionService() {
                     player.pause()
                     isPlaying = false
                 } else {
+                    prepareIfNeeded()
                     player.play()
                     isPlaying = true
                     enterForegroundPlayback()
@@ -304,6 +305,7 @@ class MusicService : MediaSessionService() {
             }
             "PLAY_INDEX" -> {
                 val index = intent.getIntExtra("index", 0)
+                prepareIfNeeded()
                 player.seekTo(index, 0)
                 player.play()
                 enterForegroundPlayback()
@@ -327,6 +329,16 @@ class MusicService : MediaSessionService() {
         }
 
         return START_STICKY
+    }
+
+    /**
+     * 何も再生していない状態でキューに曲を追加した場合など、ExoPlayer がまだ再生準備されていなければ準備する。
+     * 準備されていないまま play() しても音は鳴らない。
+     */
+    private fun prepareIfNeeded() {
+        if (player.playbackState == Player.STATE_IDLE && player.mediaItemCount > 0) {
+            player.prepare()
+        }
     }
 
     private fun enterForegroundPlayback() {
