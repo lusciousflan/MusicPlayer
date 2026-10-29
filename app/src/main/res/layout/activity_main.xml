@@ -19,32 +19,7 @@
             android:layout_height="0dp"
             android:layout_weight="1" />
 
-        <LinearLayout
-            android:id="@+id/miniPlayer"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="8dp"
-            android:background="?android:attr/colorBackground">
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:orientation="horizontal"
-                android:padding="8dp"
-                android:gravity="center_vertical">
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-                    <TextView android:id="@+id/miniTitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="No music" android:textColor="?android:attr/textColorPrimary" android:maxLines="1" android:ellipsize="end" />
-                    <TextView android:id="@+id/miniArtist" android:layout_width="match_parent" android:layout_height="wrap_content" android:alpha="0.7" android:maxLines="1" android:ellipsize="end" android:textColor="?android:attr/textColorSecondary" />
-                </LinearLayout>
-                <Button android:id="@+id/playPauseButton" android:text="▶" android:layout_width="wrap_content" android:layout_height="wrap_content" />
-            </LinearLayout>
-            <SeekBar android:id="@+id/seekBar" android:layout_width="match_parent" android:layout_height="wrap_content" />
-            <TextView android:id="@+id/timeText" android:text="00:00 / 00:00" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="?android:attr/textColorPrimary" android:layout_gravity="center" />
-        </LinearLayout>
+        <include layout="@layout/mini_player" />
     </LinearLayout>
 
     <com.google.android.material.navigation.NavigationView

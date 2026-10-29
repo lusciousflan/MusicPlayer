@@ -1,19 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 作成・設定画面を除く画面で共通して表示するミニプレイヤー。処理は ui.MiniPlayerController が担当する。 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/miniPlayer"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:gravity="center_vertical"
+    android:orientation="vertical"
     android:padding="8dp"
     android:background="?android:attr/colorBackground">
     <LinearLayout
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:orientation="vertical">
-        <TextView android:id="@+id/miniTitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="No music" android:maxLines="1" android:ellipsize="end" />
-        <TextView android:id="@+id/miniArtist" android:layout_width="match_parent" android:layout_height="wrap_content" android:alpha="0.7" android:maxLines="1" android:ellipsize="end" />
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:gravity="center_vertical">
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+            <TextView android:id="@+id/miniTitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="No music" android:textColor="?android:attr/textColorPrimary" android:maxLines="1" android:ellipsize="end" />
+            <TextView android:id="@+id/miniArtist" android:layout_width="match_parent" android:layout_height="wrap_content" android:alpha="0.7" android:maxLines="1" android:ellipsize="end" android:textColor="?android:attr/textColorSecondary" />
+        </LinearLayout>
+        <Button android:id="@+id/miniPlayPause" android:text="▶" android:layout_width="wrap_content" android:layout_height="wrap_content" />
     </LinearLayout>
-    <Button android:id="@+id/miniPlayPause" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="▶" />
+    <SeekBar android:id="@+id/miniSeekBar" android:layout_width="match_parent" android:layout_height="wrap_content" />
+    <TextView android:id="@+id/miniTimeText" android:text="00:00 / 00:00" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="?android:attr/textColorPrimary" android:layout_gravity="center" />
 </LinearLayout>
