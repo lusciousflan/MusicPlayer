@@ -9,7 +9,15 @@ class PlaylistEvaluator(
     private var index = 0
 
     fun evaluate(): Set<AudioWithTags> {
-        return parseExpression()
+        val result = parseExpression()
+        // 式として解釈できたところで止まり、後ろにトークンが残っている場合（例: "rock pop" や "rock )"）は
+        // 残りを黙って無視せず構文エラーにする。
+        if (index < tokens.size) {
+            throw PlaylistSyntaxException(
+                "Unexpected token: ${tokens[index]}"
+            )
+        }
+        return result
     }
 
     // low priority: | + -

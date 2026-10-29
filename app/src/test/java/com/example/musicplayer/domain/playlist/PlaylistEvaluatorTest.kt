@@ -120,6 +120,19 @@ class PlaylistEvaluatorTest {
     }
 
     @Test
+    fun `演算子なしでタグが続くと構文エラー`() {
+        assertThrows(PlaylistSyntaxException::class.java) { evaluate("rock pop") }
+        assertThrows(PlaylistSyntaxException::class.java) { evaluate("(rock) pop") }
+        assertThrows(PlaylistSyntaxException::class.java) { evaluate("!rock pop") }
+    }
+
+    @Test
+    fun `対応する開き括弧のない閉じ括弧は構文エラー`() {
+        assertThrows(PlaylistSyntaxException::class.java) { evaluate("rock )") }
+        assertThrows(PlaylistSyntaxException::class.java) { evaluate("(rock + pop))") }
+    }
+
+    @Test
     fun `曲が空のライブラリでも構文チェックとして評価できる`() {
         // プレイリスト作成画面は、曲リストを空にして式の構文だけを検査している。
         assertEquals(

@@ -6,12 +6,12 @@ sealed class Token {
         val name: String
     ) : Token()
 
-    object Plus : Token()
-    object Minus : Token()
-    object Not : Token()
-    object And : Token()
-    object Or : Token()
+    data object Plus : Token()
+    data object Minus : Token()
+    data object Not : Token()
+    data object And : Token()
+    data object Or : Token()
 
-    object LParen : Token()
-    object RParen : Token()
+    data object LParen : Token()
+    data object RParen : Token()
 }
