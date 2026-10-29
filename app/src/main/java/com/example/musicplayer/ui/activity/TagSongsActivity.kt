@@ -1,6 +1,7 @@
 package com.example.musicplayer.ui.activity
 
 import com.example.musicplayer.R
+import com.example.musicplayer.data.local.albumArtUri
 import com.example.musicplayer.MyApp
 import com.example.musicplayer.data.local.MusicRepository
 import com.example.musicplayer.model.AudioFile
@@ -13,8 +14,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import android.os.Bundle
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
-import android.net.Uri
-import android.content.ContentUris
 
 class TagSongsActivity : AppCompatActivity() {
 
@@ -63,12 +62,7 @@ class TagSongsActivity : AppCompatActivity() {
             recyclerView.layoutManager = LinearLayoutManager(this@TagSongsActivity)
             recyclerView.adapter = AudioAdapter(
                 list = audioFiles,
-                getAlbumArtUri = { albumId ->
-                    ContentUris.withAppendedId(
-                        Uri.parse("content://media/external/audio/albumart"),
-                        albumId
-                    )
-                },
+                getAlbumArtUri = ::albumArtUri,
                 onClick = { _, _ -> },
                 onAddToQueue = { },
                 onEditTag = { }

@@ -1,6 +1,7 @@
 package com.example.musicplayer.ui.activity
 
 import com.example.musicplayer.R
+import com.example.musicplayer.data.local.albumArtUri
 import com.example.musicplayer.MyApp
 import com.example.musicplayer.data.local.MusicRepository
 import com.example.musicplayer.domain.playlist.*
@@ -13,8 +14,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import android.os.Bundle
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
-import android.net.Uri
-import android.content.ContentUris
 import android.widget.Toast
 import android.view.Menu
 import android.view.MenuItem
@@ -69,12 +68,7 @@ class PlaylistSongsActivity : AppCompatActivity() {
 
                 recyclerView.adapter = AudioAdapter(
                     list = audioFiles,
-                    getAlbumArtUri = { albumId ->
-                        ContentUris.withAppendedId(
-                            Uri.parse("content://media/external/audio/albumart"),
-                            albumId
-                        )
-                    },
+                    getAlbumArtUri = ::albumArtUri,
                     onClick = { _, position ->
                         val intent = Intent(
                             this@PlaylistSongsActivity,

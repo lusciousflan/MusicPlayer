@@ -9,7 +9,6 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.MediaSession
 import android.content.Context
-import android.net.Uri
 import android.os.IBinder
 import android.os.Handler
 import android.os.Looper
@@ -17,11 +16,11 @@ import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.content.ContentUris
 import android.util.Log
 import android.media.audiofx.LoudnessEnhancer
 import com.example.musicplayer.MyApp
 import com.example.musicplayer.data.local.AudioVolumeEntity
+import com.example.musicplayer.data.local.albumArtUri
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -540,9 +539,7 @@ class MusicService : MediaSessionService() {
 
     private fun getAlbumArt(albumId: Long): Bitmap? {
         return try {
-            val uri = Uri.parse("content://media/external/audio/albumart")
-            val artUri = ContentUris.withAppendedId(uri, albumId)
-            val input = contentResolver.openInputStream(artUri)
+            val input = contentResolver.openInputStream(albumArtUri(albumId))
             BitmapFactory.decodeStream(input)
         } catch (e: Exception) {
             null

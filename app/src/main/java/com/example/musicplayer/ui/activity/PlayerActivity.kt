@@ -1,6 +1,7 @@
 package com.example.musicplayer.ui.activity
 
 import com.example.musicplayer.R
+import com.example.musicplayer.data.local.albumArtUri
 import com.example.musicplayer.playback.MusicService
 import androidx.appcompat.app.AppCompatActivity
 import android.widget.TextView
@@ -11,8 +12,6 @@ import android.content.Intent
 import android.os.Bundle
 import android.content.IntentFilter
 import android.widget.ImageView
-import android.net.Uri
-import android.content.ContentUris
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import android.widget.SeekBar
@@ -42,7 +41,7 @@ class PlayerActivity : AppCompatActivity() {
                     val albumId = intent.getLongExtra("albumId", -1)
                     if (albumId != -1L) {
                         Glide.with(this@PlayerActivity)
-                            .load(getAlbumArtUri(albumId))
+                            .load(albumArtUri(albumId))
                             .placeholder(R.drawable.default_art)   // 読み込み中
                             .error(R.drawable.default_art)         // 読み込み失敗
                             .diskCacheStrategy(DiskCacheStrategy.ALL)
@@ -201,13 +200,6 @@ class PlayerActivity : AppCompatActivity() {
         super.onPause()
         unregisterReceiver(receiver)
         unregisterReceiver(progressReceiver)
-    }
-
-    private fun getAlbumArtUri(albumId: Long): Uri {
-        return ContentUris.withAppendedId(
-            Uri.parse("content://media/external/audio/albumart"),
-            albumId
-        )
     }
 
     private fun formatTime(ms: Int): String {

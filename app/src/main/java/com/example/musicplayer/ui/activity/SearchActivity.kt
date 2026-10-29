@@ -1,11 +1,7 @@
 package com.example.musicplayer.ui.activity
 
-import android.content.ContentUris
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
-import android.os.Build
-import android.provider.MediaStore
 import android.text.Editable
 import android.text.TextWatcher
 import android.widget.EditText
@@ -26,8 +22,8 @@ import com.example.musicplayer.ui.adapter.ArtistAdapter
 import com.example.musicplayer.ui.adapter.AlbumAdapter
 import com.example.musicplayer.ui.adapter.AlbumItem
 import com.example.musicplayer.ui.MiniPlayerController
-import com.example.musicplayer.model.isVisibleAudioTitle
-import com.example.musicplayer.data.local.isExcludedPath
+import com.example.musicplayer.data.local.albumArtUri
+import com.example.musicplayer.data.local.queryAudioFiles
 
 class SearchActivity : AppCompatActivity() {
     private lateinit var songsAdapter: AudioAdapter
@@ -121,44 +117,11 @@ class SearchActivity : AppCompatActivity() {
 
     private fun createAdapter(initial: List<AudioFile>) = AudioAdapter(
         initial,
-        getAlbumArtUri = { albumId -> ContentUris.withAppendedId(Uri.parse("content://media/external/audio/albumart"), albumId) },
+        getAlbumArtUri = ::albumArtUri,
         onClick = { audio, _ -> startService(Intent(this, MusicService::class.java).apply { action = "PLAY"; putExtra("audio", audio) }) },
         onAddToQueue = { audio -> startService(Intent(this, MusicService::class.java).apply { action = "ADD_TO_QUEUE"; putExtra("audio", audio) }) },
         onEditTag = { }
     )
 
-    private fun loadSongs(): List<AudioFile> {
-        val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-        val result = mutableListOf<AudioFile>()
-        val projection = mutableListOf(
-            MediaStore.Audio.Media._ID, MediaStore.Audio.Media.TITLE,
-            MediaStore.Audio.Media.ARTIST, MediaStore.Audio.Media.ALBUM_ID,
-            MediaStore.Audio.Media.ALBUM
-        ).apply {
-            add(if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) MediaStore.Audio.Media.RELATIVE_PATH else MediaStore.Audio.Media.DATA)
-        }
-        contentResolver.query(
-            collection,
-            projection.toTypedArray(),
-            "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.MIME_TYPE} LIKE 'audio/%'",
-            null, null
-        )?.use { cursor ->
-            val id = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
-            val title = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
-            val artist = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
-            val album = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
-            val albumName = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
-            val path = cursor.getColumnIndexOrThrow(if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) MediaStore.Audio.Media.RELATIVE_PATH else MediaStore.Audio.Media.DATA)
-            while (cursor.moveToNext()) {
-                val songTitle = cursor.getString(title)
-                if (!isVisibleAudioTitle(songTitle)) continue
-                if (isExcludedPath(this, cursor.getString(path).orEmpty())) continue
-                val songId = cursor.getLong(id)
-                result += AudioFile(songId, songTitle, cursor.getString(artist),
-                    ContentUris.withAppendedId(collection, songId).toString(), cursor.getLong(album),
-                    albumName = cursor.getString(albumName).orEmpty())
-            }
-        }
-        return result
-    }
+    private fun loadSongs(): List<AudioFile> = queryAudioFiles(this)
 }

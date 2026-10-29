@@ -1,15 +1,14 @@
 package com.example.musicplayer.ui.activity
 
 import com.example.musicplayer.R
+import com.example.musicplayer.data.local.albumArtUri
 import com.example.musicplayer.playback.MusicService
 import com.example.musicplayer.ui.adapter.AudioAdapter
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import android.net.Uri
 import android.content.Intent
-import android.content.ContentUris
 import com.example.musicplayer.ui.MiniPlayerController
 
 class QueueActivity : AppCompatActivity() {
@@ -28,12 +27,7 @@ class QueueActivity : AppCompatActivity() {
         val queueSongs = MusicService.getQueue()
         adapter = AudioAdapter(
             queueSongs,
-            getAlbumArtUri = { albumId: Long ->
-                ContentUris.withAppendedId(
-                    Uri.parse("content://media/external/audio/albumart"),
-                    albumId
-                )
-            },
+            getAlbumArtUri = ::albumArtUri,
             onClick = { _, position ->
                 val intent = Intent(this, MusicService::class.java)
                 intent.action = "PLAY_INDEX"

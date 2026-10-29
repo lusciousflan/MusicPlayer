@@ -1,13 +1,13 @@
 package com.example.musicplayer.ui.fragment
 
 import com.example.musicplayer.R
+import com.example.musicplayer.data.local.albumArtUri
+import com.example.musicplayer.data.local.queryAudioFiles
 import com.example.musicplayer.model.AudioFile
 import com.example.musicplayer.playback.MusicService
 import com.example.musicplayer.ui.activity.MainActivity
 import com.example.musicplayer.ui.adapter.AudioAdapter
-import android.content.ContentUris
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
@@ -34,7 +34,7 @@ class SongsFragment : Fragment(R.layout.fragment_songs) {
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
 
         // MediaStoreから返された現在の順番を反転して表示する
-        val originalAudioList = (requireActivity() as MainActivity).getAudioFiles()
+        val originalAudioList = queryAudioFiles(requireContext())
             .let { songs ->
                 when (grouping) {
                     "album" -> songs.sortedWith(compareBy({ it.albumId }, { it.title }))
@@ -47,14 +47,7 @@ class SongsFragment : Fragment(R.layout.fragment_songs) {
 
         adapter = AudioAdapter(
             audioList,
-            getAlbumArtUri = { albumId ->
-                ContentUris.withAppendedId(
-                    Uri.parse(
-                        "content://media/external/audio/albumart"
-                    ),
-                    albumId
-                )
-            },
+            getAlbumArtUri = ::albumArtUri,
             onClick = { audio, position ->
                 val intent = Intent(
                         requireContext(),
