@@ -72,6 +72,15 @@ class AudioSyncTest {
     }
 
     @Test
+    fun アルバム名が変わった曲は更新する() {
+        val stored = media(1)
+
+        val plan = planAudioSync(listOf(stored), listOf(media(1).copy(albumName = "新アルバム")), now)
+
+        assertEquals(listOf(stored.copy(albumName = "新アルバム")), plan.updates)
+    }
+
+    @Test
     fun 追加日時が未記録の既存曲はMediaStoreの追加日時で補う() {
         val stored = media(1, addedAt = 0).copy(playCount = 3)
 

@@ -11,7 +11,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <AutoCompleteTextView
+        <com.example.musicplayer.ui.view.ExpressionEditText
             android:id="@+id/expressionEdit"
             android:hint="tag1 + tag2 - tag3"
             android:inputType="text"

@@ -1,6 +1,7 @@
 package com.example.musicplayer.domain.playlist
 
 import com.example.musicplayer.data.local.AudioWithTags
+import com.example.musicplayer.util.containsForSearch
 class PlaylistEvaluator(
     private val tokens: List<Token>,
     private val allAudio: List<AudioWithTags>
@@ -61,7 +62,7 @@ class PlaylistEvaluator(
         return current
     }
 
-    // factor: tag, not, (...)        
+    // factor: tag, search{...}, not, (...)        
     private fun parseFactor(): Set<AudioWithTags> {
 
         if (index >= tokens.size) {
@@ -76,6 +77,19 @@ class PlaylistEvaluator(
                 allAudio.filter { audio ->
                     audio.tags.any {
                         it.name == token.name
+                    }
+                }.toSet()
+            }
+
+            is Token.Search -> {
+                if (token.query.isEmpty()) {
+                    throw PlaylistSyntaxException(
+                        "Empty search: ${token.field.keyword}{}"
+                    )
+                }
+                allAudio.filter { audio ->
+                    searchTargets(audio, token.field).any {
+                        containsForSearch(it, token.query)
                     }
                 }.toSet()
             }
@@ -107,4 +121,12 @@ class PlaylistEvaluator(
             }
         }
     }
+
+    private fun searchTargets(audio: AudioWithTags, field: SearchField): List<String> =
+        when (field) {
+            SearchField.TITLE -> listOf(audio.audio.title)
+            SearchField.ARTIST -> listOf(audio.audio.artist)
+            SearchField.ALBUM -> listOf(audio.audio.albumName)
+            SearchField.ANY -> listOf(audio.audio.title, audio.audio.artist, audio.audio.albumName)
+        }
 }

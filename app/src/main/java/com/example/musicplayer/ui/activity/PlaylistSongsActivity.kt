@@ -46,9 +46,9 @@ class PlaylistSongsActivity : AppCompatActivity() {
             val playlist = repository.getPlaylistById(playlistId)
             title = playlist.name
             val allAudio = repository.getAllAudioWithTags()
-            val tokens = tokenize(playlist.expression)
 
             try {
+                val tokens = tokenize(playlist.expression)
                 val evaluator = PlaylistEvaluator(
                         tokens,
                         allAudio
@@ -61,6 +61,7 @@ class PlaylistSongsActivity : AppCompatActivity() {
                         artist = it.audio.artist,
                         uri = it.audio.uri,
                         albumId = it.audio.albumId,
+                        albumName = it.audio.albumName,
                         addedAt = it.audio.addedAt,
                         playCount = it.audio.playCount
                     )

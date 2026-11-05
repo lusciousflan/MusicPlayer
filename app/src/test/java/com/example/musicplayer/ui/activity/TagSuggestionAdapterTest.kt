@@ -79,6 +79,36 @@ class TagSuggestionAdapterTest {
 
         adapter.filterAndWait("ボカロ & ")
 
-        assertEquals(tags, adapter.items())
+        assertEquals(tags + listOf("title{}", "artist{}", "album{}", "search{}"), adapter.items())
+    }
+
+    @Test
+    fun 検索項目名の先頭を入力すると検索式が候補になる() {
+        val adapter = newAdapter()
+
+        adapter.filterAndWait("ti")
+        assertEquals(listOf("title{}"), adapter.items())
+
+        adapter.filterAndWait("ボカロ & AL")
+        assertEquals(listOf("album{}"), adapter.items())
+    }
+
+    @Test
+    fun 先頭が一致する検索式がすべて候補になる() {
+        val adapter = newAdapter()
+
+        adapter.filterAndWait("a")
+
+        assertEquals(listOf("artist{}", "album{}"), adapter.items())
+    }
+
+    @Test
+    fun タグ名に含まれる文字でも検索式は先頭一致のときだけ出る() {
+        val adapter = newAdapter()
+
+        // "rock" は "r" を含むが、検索式は title/artist/album/search のどれも "r" で始まらない
+        adapter.filterAndWait("r")
+
+        assertEquals(listOf("rock"), adapter.items())
     }
 }

@@ -113,6 +113,7 @@ fun loadAudioFromMediaStore(context: Context): List<AudioEntity> =
     queryAudioFiles(context).map { audio ->
         AudioEntity(
             audio.id, audio.title, audio.artist, audio.uri, audio.albumId,
-            addedAt = audio.addedAt
+            addedAt = audio.addedAt,
+            albumName = audio.albumName
         )
     }

@@ -53,6 +53,7 @@ fun planAudioSync(stored: List<AudioEntity>, mediaList: List<AudioEntity>, now: 
                 artist = media.artist,
                 uri = media.uri,
                 albumId = media.albumId,
+                albumName = media.albumName,
                 addedAt = if (current.addedAt > 0) current.addedAt else media.addedAt
             )
             if (updated != current) updates += updated

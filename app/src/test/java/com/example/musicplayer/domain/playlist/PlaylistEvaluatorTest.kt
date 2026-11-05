@@ -140,4 +140,61 @@ class PlaylistEvaluatorTest {
             PlaylistEvaluator(tokenize("(rock + pop) & !jazz"), emptyList()).evaluate()
         )
     }
+
+    // ---- 検索 ----
+
+    private fun song(id: Long, title: String, artist: String, album: String, vararg tags: String) = AudioWithTags(
+        AudioEntity(id = id, title = title, artist = artist, uri = "", albumId = 0, albumName = album),
+        tags.map { TagEntity(it) }
+    )
+
+    // 10: A のソロ曲 / 11: A と B の共作 / 12: B のソロ曲 / 13: C の曲
+    private val searchLibrary = listOf(
+        song(10, "ハロー", "A", "First", "pop"),
+        song(11, "コラボ曲", "A×B", "Collab"),
+        song(12, "Night Drive", "B", "Second", "pop"),
+        song(13, "恋の歌", "C", "ラブソング集")
+    )
+
+    private fun search(expression: String): List<Long> =
+        PlaylistEvaluator(tokenize(expression), searchLibrary).evaluate()
+            .map { it.audio.id }
+            .sorted()
+
+    @Test
+    fun `アーティスト検索は部分一致で共作の曲はどちらの名前でも含まれる`() {
+        assertEquals(listOf(10L, 11L), search("artist{A}"))
+        assertEquals(listOf(11L, 12L), search("artist{B}"))
+    }
+
+    @Test
+    fun `曲名とアルバム名で検索できる`() {
+        assertEquals(listOf(13L), search("title{恋}"))
+        assertEquals(listOf(11L), search("album{collab}"))
+    }
+
+    @Test
+    fun `searchは曲名とアーティストとアルバムのどれかに一致する曲`() {
+        // 曲名「Night Drive」、アルバム「First」の両方に i が含まれる
+        assertEquals(listOf(10L, 12L), search("search{i}"))
+    }
+
+    @Test
+    fun `検索は大文字小文字とひらがなカタカナを区別しない`() {
+        assertEquals(listOf(12L), search("title{NIGHT}"))
+        assertEquals(listOf(10L), search("title{はろー}"))
+        assertEquals(listOf(13L), search("album{らぶ}"))
+    }
+
+    @Test
+    fun `検索とタグを組み合わせられる`() {
+        assertEquals(listOf(12L), search("pop & artist{B}"))
+        assertEquals(listOf(10L), search("artist{A} - artist{B}"))
+    }
+
+    @Test
+    fun `空の検索は構文エラー`() {
+        assertThrows(PlaylistSyntaxException::class.java) { search("artist{}") }
+        assertThrows(PlaylistSyntaxException::class.java) { search("artist{  }") }
+    }
 }

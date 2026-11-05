@@ -5,7 +5,7 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [AudioEntity::class, AudioVolumeEntity::class, TagEntity::class, AudioTagCrossRef::class, PlaylistEntity::class],
-    version = 9
+    version = 10
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun audioDao(): AudioDao

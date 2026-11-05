@@ -28,6 +28,7 @@ class MyApp : Application() {
         .addMigrations(MIGRATION_6_7)
         .addMigrations(MIGRATION_7_8)
         .addMigrations(MIGRATION_8_9)
+        .addMigrations(MIGRATION_9_10)
         .build()
     }
 
@@ -55,6 +56,13 @@ class MyApp : Application() {
                 database.execSQL(
                     "ALTER TABLE audio ADD COLUMN playCount INTEGER NOT NULL DEFAULT 0"
                 )
+            }
+        }
+
+        // プレイリスト式の album{...} 検索のため、アルバム名を保存する。値は次回の MediaStore 同期で入る。
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE audio ADD COLUMN albumName TEXT NOT NULL DEFAULT ''")
             }
         }
     }

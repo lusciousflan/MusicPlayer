@@ -5,6 +5,8 @@ import com.example.musicplayer.MyApp
 import com.example.musicplayer.data.local.MusicRepository
 import com.example.musicplayer.domain.playlist.*
 import com.example.musicplayer.util.normalizeTag
+import com.example.musicplayer.util.containsForSearch
+import com.example.musicplayer.ui.view.ExpressionEditText
 import android.content.Context
 import android.os.Bundle
 import android.widget.*
@@ -33,7 +35,7 @@ class CreatePlaylistActivity : AppCompatActivity() {
         repository = MusicRepository(dao)
         val nameEdit = findViewById<EditText>(R.id.playlistName)
         val expressionStatus = findViewById<TextView>(R.id.expressionStatus)
-        val expressionEdit = findViewById<AutoCompleteTextView>(R.id.expressionEdit)
+        val expressionEdit = findViewById<ExpressionEditText>(R.id.expressionEdit)
         val editingId = intent.getLongExtra("playlistId", -1L)
 
         if (editingId != -1L) {
@@ -53,22 +55,6 @@ class CreatePlaylistActivity : AppCompatActivity() {
                     tagNames
                 )
             )
-            expressionEdit.addTextChangedListener(object : TextWatcher {
-                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
-                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                    // 演算子の後ろだけを候補検索対象にするため、式の途中でも候補を出せる。
-                    val fragment = s?.toString().orEmpty()
-                        .split(Regex("[+|&()\\-]"))
-                        .lastOrNull()
-                        .orEmpty()
-                        .trim()
-                    if (fragment.isNotEmpty()) {
-                        (expressionEdit.adapter as? Filterable)?.filter?.filter(fragment)
-                        expressionEdit.post { expressionEdit.showDropDown() }
-                    }
-                }
-                override fun afterTextChanged(s: Editable?) = Unit
-            })
         }
 
         expressionEdit.addTextChangedListener(
@@ -161,7 +147,8 @@ class CreatePlaylistActivity : AppCompatActivity() {
 }
 
 /**
- * プレイリスト式の入力欄に出すタグ候補。式の最後の演算子より後ろの文字で絞り込む。
+ * プレイリスト式の入力欄に出す候補。タグ名と、検索式(title{} など)を出す。
+ * 式の最後の演算子より後ろの文字で絞り込む。
  *
  * ArrayAdapter は渡されたリストをそのまま表示用に使い、絞り込みのたびに clear() で中身を消す。
  * 全タグのリストを渡すと候補の元データまで消えて2回目以降の候補が出なくなるため、表示用には別のリストを渡す。
@@ -174,16 +161,20 @@ internal class TagSuggestionAdapter(
 
     private val tagFilter = object : Filter() {
         override fun performFiltering(constraint: CharSequence?): FilterResults {
-            val query = toHiragana(
-                constraint?.toString().orEmpty()
-                    .split(Regex("[+|&()\\-]"))
-                    .lastOrNull()
-                    .orEmpty()
-                    .trim()
-            )
-            val matches = if (query.isEmpty()) allTags else allTags.filter {
-                toHiragana(it).contains(query)
+            val query = constraint?.toString().orEmpty()
+                .split(Regex("[+|&()\\-]"))
+                .lastOrNull()
+                .orEmpty()
+                .trim()
+            val tagMatches = if (query.isEmpty()) allTags else allTags.filter {
+                containsForSearch(it, query)
             }
+            // 検索式は項目名の先頭が一致したら候補にする（例: "ti" → title{}）。
+            // 何も入力していないときは、使える検索式をタグの後ろにすべて並べる。
+            val searchMatches = SearchField.entries
+                .filter { it.keyword.startsWith(query.lowercase()) }
+                .map { "${it.keyword}{}" }
+            val matches = tagMatches + searchMatches
             return FilterResults().apply {
                 values = matches
                 count = matches.size
@@ -199,16 +190,4 @@ internal class TagSuggestionAdapter(
     }
 
     override fun getFilter(): Filter = tagFilter
-
-    private fun toHiragana(value: String): String = buildString(value.length) {
-        value.forEach { character ->
-            append(
-                if (character in '\u30A1'..'\u30F6') {
-                    (character.code - 0x60).toChar()
-                } else {
-                    character
-                }
-            )
-        }
-    }
 }

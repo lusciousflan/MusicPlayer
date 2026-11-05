@@ -57,6 +57,7 @@ class TagSongsActivity : AppCompatActivity() {
                     artist = it.artist,
                     uri = it.uri,
                     albumId = it.albumId,
+                    albumName = it.albumName,
                     addedAt = it.addedAt,
                     playCount = it.playCount
                 )
