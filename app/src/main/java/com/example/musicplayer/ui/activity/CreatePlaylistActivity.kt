@@ -5,6 +5,7 @@ import com.example.musicplayer.MyApp
 import com.example.musicplayer.data.local.MusicRepository
 import com.example.musicplayer.domain.playlist.*
 import com.example.musicplayer.util.normalizeTag
+import android.content.Context
 import android.os.Bundle
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
@@ -159,10 +160,18 @@ class CreatePlaylistActivity : AppCompatActivity() {
     }
 }
 
-private class TagSuggestionAdapter(
-    context: CreatePlaylistActivity,
-    private val allTags: List<String>
-) : ArrayAdapter<String>(context, android.R.layout.simple_dropdown_item_1line, allTags) {
+/**
+ * プレイリスト式の入力欄に出すタグ候補。式の最後の演算子より後ろの文字で絞り込む。
+ *
+ * ArrayAdapter は渡されたリストをそのまま表示用に使い、絞り込みのたびに clear() で中身を消す。
+ * 全タグのリストを渡すと候補の元データまで消えて2回目以降の候補が出なくなるため、表示用には別のリストを渡す。
+ */
+internal class TagSuggestionAdapter(
+    context: Context,
+    allTags: List<String>
+) : ArrayAdapter<String>(context, android.R.layout.simple_dropdown_item_1line, ArrayList(allTags)) {
+    private val allTags: List<String> = allTags.toList()
+
     private val tagFilter = object : Filter() {
         override fun performFiltering(constraint: CharSequence?): FilterResults {
             val query = toHiragana(
