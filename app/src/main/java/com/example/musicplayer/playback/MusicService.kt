@@ -26,6 +26,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MusicService : MediaSessionService() {
     private lateinit var player: ExoPlayer
@@ -39,11 +40,17 @@ class MusicService : MediaSessionService() {
     var isShuffle = false
     private val audioMap = mutableMapOf<String, AudioFile>()
     private var progressRunnable: Runnable? = null
+    private var albumArtCacheId: Long? = null
+    private var albumArtCache: Bitmap? = null
+    private var albumArtLoadingId: Long? = null
     private var sleepTimerRunnable: Runnable? = null
     private var loudnessEnhancer: LoudnessEnhancer? = null
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     companion object {
+        // 通知のアルバムアートを読み込むときの最大の一辺(px)。これより大きい画像は縮小する。
+        private const val ALBUM_ART_MAX_SIZE = 512
+
         var player: ExoPlayer? = null
         fun getQueue(): List<AudioFile> {
             val p = player ?: return emptyList()
@@ -70,10 +77,19 @@ class MusicService : MediaSessionService() {
                     intent.putExtra("isPlaying", playing)
                     sendBroadcast(intent)
                     updateNotification()
+                    if (playing) {
+                        startProgressUpdates()
+                    } else {
+                        // 止まった位置を画面に反映してから、定期送信をやめる
+                        stopProgressUpdates()
+                        sendProgress()
+                    }
                 }
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     if (playbackState == Player.STATE_READY) {
                         applyGainFor(audioMap[player.currentMediaItem?.mediaId])
+                        // 一時停止中に曲を切り替えた場合も、曲の長さが分かった時点で画面に反映する
+                        sendProgress()
                     }
                 }
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -88,6 +104,7 @@ class MusicService : MediaSessionService() {
                         }
                     }
                     sendNowPlaying()
+                    sendProgress()
                     updateNotification()
                 }
 
@@ -268,6 +285,7 @@ class MusicService : MediaSessionService() {
             "SEEK" -> {
                 val position = intent.getIntExtra("position", 0)
                 player.seekTo(position.toLong())
+                sendProgress()
             }
             "TOGGLE_REPEAT" -> {
                 player.repeatMode =
@@ -302,6 +320,8 @@ class MusicService : MediaSessionService() {
                 isRepeatAll = player.repeatMode == Player.REPEAT_MODE_ALL
                 sendBroadcast(Intent("REPEAT_STATE_CHANGED").putExtra("isRepeatAll", isRepeatAll))
                 sendBroadcast(Intent("SHUFFLE_STATE_CHANGED").putExtra("isShuffle", isShuffle))
+                // 一時停止中は再生位置を定期送信していないため、開いた画面のシークバー用に1回送る
+                sendProgress()
             }
             "PLAY_INDEX" -> {
                 val index = intent.getIntExtra("index", 0)
@@ -475,7 +495,7 @@ class MusicService : MediaSessionService() {
             .setContentTitle(currentTitle)
             .setContentText(currentArtist)
             .setSmallIcon(android.R.drawable.ic_media_play)
-            .setLargeIcon(getAlbumArt(currentAlbumId))
+            .setLargeIcon(albumArtFor(currentAlbumId))
             .addAction(android.R.drawable.ic_media_previous, "Prev", prevPending)
             .addAction(icon, text, playPausePending)
             .addAction(android.R.drawable.ic_media_next, "Next", nextPending)
@@ -488,33 +508,73 @@ class MusicService : MediaSessionService() {
         manager.notify(1, createNotification())
     }
 
+    /**
+     * 再生中は 0.5 秒ごとに再生位置を画面へ送る。
+     * 一時停止中は位置が変わらないので送らない（電池の消費を抑えるため）。再生が止まるとループも止まる。
+     */
     private fun startProgressUpdates() {
-        progressRunnable?.let {
-            handler.removeCallbacks(it)
-        }
+        stopProgressUpdates()
         progressRunnable = object : Runnable {
             override fun run() {
-                Log.d(
-                    "MusicService",
-                    "progress=${player.currentPosition} duration=${player.duration}"
-                )
-                if (player.isPlaying || player.playbackState != Player.STATE_IDLE) {
-                    val intent = Intent("MUSIC_PROGRESS")
-                    intent.putExtra("current", player.currentPosition.toInt())
-                    intent.putExtra("duration", player.duration.toInt())
-                    sendBroadcast(intent)
+                sendProgress()
+                if (player.isPlaying) {
+                    handler.postDelayed(this, 500)
+                } else {
+                    progressRunnable = null
                 }
-                handler.postDelayed(this, 500)
             }
-        }
-        handler.post(progressRunnable!!)
+        }.also(handler::post)
     }
 
+    private fun stopProgressUpdates() {
+        progressRunnable?.let(handler::removeCallbacks)
+        progressRunnable = null
+    }
 
-    private fun getAlbumArt(albumId: Long): Bitmap? {
+    private fun sendProgress() {
+        if (!player.isPlaying && player.playbackState == Player.STATE_IDLE) return
+        val intent = Intent("MUSIC_PROGRESS")
+        intent.putExtra("current", player.currentPosition.toInt())
+        intent.putExtra("duration", player.duration.toInt())
+        sendBroadcast(intent)
+    }
+
+    /**
+     * 通知に表示するアルバムアート。
+     * 画像の読み込みは重いため、通知を更新するたびにメインスレッドで読み込まず、バックグラウンドで1回だけ読んで保持する。
+     * 読み込みが終わるまではアートなしで表示し、読み込み後に通知を更新する。
+     */
+    private fun albumArtFor(albumId: Long): Bitmap? {
+        if (albumId < 0) return null
+        if (albumArtCacheId == albumId) return albumArtCache
+        if (albumArtLoadingId != albumId) {
+            albumArtLoadingId = albumId
+            serviceScope.launch {
+                val bitmap = withContext(Dispatchers.IO) { loadAlbumArt(albumId) }
+                if (albumArtLoadingId != albumId) return@launch
+                albumArtLoadingId = null
+                albumArtCacheId = albumId
+                albumArtCache = bitmap
+                if (currentAlbumId == albumId) updateNotification()
+            }
+        }
+        return null
+    }
+
+    /** アルバムアートを通知用の大きさまで縮小して読み込む。画像がなければ null。 */
+    private fun loadAlbumArt(albumId: Long): Bitmap? {
         return try {
-            val input = contentResolver.openInputStream(albumArtUri(albumId))
-            BitmapFactory.decodeStream(input)
+            val uri = albumArtUri(albumId)
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+            var sampleSize = 1
+            while (bounds.outWidth / (sampleSize * 2) >= ALBUM_ART_MAX_SIZE &&
+                bounds.outHeight / (sampleSize * 2) >= ALBUM_ART_MAX_SIZE
+            ) {
+                sampleSize *= 2
+            }
+            val options = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+            contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
         } catch (e: Exception) {
             null
         }
@@ -541,9 +601,7 @@ class MusicService : MediaSessionService() {
 
     override fun onDestroy() {
         Log.d("MusicService", "onDestroy")
-        progressRunnable?.let {
-            handler.removeCallbacks(it)
-        }
+        stopProgressUpdates()
         try {
             if (this::player.isInitialized) {
                 player.release()
