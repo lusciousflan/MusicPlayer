@@ -2,11 +2,21 @@ package com.example.musicplayer
 
 import com.example.musicplayer.data.local.AppDatabase
 import android.app.Application
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.room.Room
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 class MyApp : Application() {
+
+    override fun onCreate() {
+        super.onCreate()
+        // 設定画面で選んだライト/ダーク/システム設定を、起動時から適用する
+        AppCompatDelegate.setDefaultNightMode(
+            getSharedPreferences("music_settings", MODE_PRIVATE)
+                .getInt("night_mode", AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+        )
+    }
 
     val database: AppDatabase by lazy {
         Room.databaseBuilder(
