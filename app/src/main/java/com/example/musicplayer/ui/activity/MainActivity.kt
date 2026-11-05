@@ -178,63 +178,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun showTagDialog(audio: AudioFile) {
-
-        lifecycleScope.launch {
-            val tags = repository.getAllTags().map { it.name }
-            val currentTags = repository.getTags(audio.id).toSet()
-            val checked = tags.map { it in currentTags }.toBooleanArray()
-
-            AlertDialog.Builder(this@MainActivity)
-                .setTitle("${audio.title}のタグを編集")
-                .setMultiChoiceItems(tags.toTypedArray(), checked) { _, which, isChecked ->
-                    checked[which] = isChecked
-                }
-                .setPositiveButton("完了") { _, _ ->
-                    lifecycleScope.launch {
-                        tags.forEachIndexed { index, tag ->
-                            if (checked[index] && tag !in currentTags) {
-                                repository.addTag(audio.id, tag)
-                            } else if (!checked[index] && tag in currentTags) {
-                                repository.removeTag(audio.id, tag)
-                            }
-                        }
-                    }
-                }
-                .setNegativeButton("キャンセル", null)
-                .setNeutralButton("新規タグ作成") { _, _ ->
-                    showCreateTagDialog(audio)
-                }
-                .show()
-        }
-    }
-
-    fun showNoteDialog(audio: AudioFile) {
-        lifecycleScope.launch {
-            val edit = EditText(this@MainActivity).apply {
-                setText(repository.getNote(audio.id))
-                hint = "この曲のメモ"
-                minLines = 3
-            }
-            AlertDialog.Builder(this@MainActivity)
-                .setTitle("楽曲メモ")
-                .setView(edit)
-                .setPositiveButton("保存") { _, _ ->
-                    lifecycleScope.launch {
-                        repository.updateNote(audio.id, edit.text.toString())
-                    }
-                }
-                .setNegativeButton("キャンセル", null)
-                .show()
-        }
-    }
-
-    fun excludeDirectoryFor(audio: AudioFile) {
-        startActivity(Intent(this, SettingsActivity::class.java).apply {
-            putExtra("addExcludedDirectoryUri", audio.uri)
-        })
-    }
-
     fun showBulkTagDialog(audios: List<AudioFile>, onComplete: () -> Unit) {
         lifecycleScope.launch {
             val tags = repository.getAllTags().map { it.name }
@@ -257,64 +200,6 @@ class MainActivity : AppCompatActivity() {
                 .setNegativeButton("キャンセル", null)
                 .show()
         }
-    }
-
-    private fun showAddTagDialog(audio: AudioFile) {
-
-        lifecycleScope.launch {
-            val tags = repository.getAllTags()
-            val items = tags.map { it.name }.toMutableList()
-            items.add("＋ タグを追加する")
-
-            AlertDialog.Builder(this@MainActivity)
-                .setTitle("タグを選択")
-                .setItems(items.toTypedArray()) { _, which ->
-                    val selected = items[which]
-                    if (selected == "＋ タグを追加する") {
-                        showCreateTagDialog(audio)
-                    } else {
-                        lifecycleScope.launch {
-                            repository.addTag(audio.id, selected)
-                        }
-                    }
-                }
-                .show()
-        }
-    }
-
-    private fun showCreateTagDialog(audio: AudioFile) {
-
-        val editText = EditText(this)
-
-        AlertDialog.Builder(this)
-            .setTitle("新しいタグ")
-            .setView(editText)
-            .setPositiveButton("追加") { _, _ ->
-                val tag = editText.text.toString()
-                if (tag.isBlank()) return@setPositiveButton
-                lifecycleScope.launch {
-                    repository.addTag(audio.id, tag)
-                }
-            }
-            .setNegativeButton("キャンセル", null)
-            .show()
-    }
-
-    private fun showRemoveTagDialog(audio: AudioFile, tag: String) {
-        AlertDialog.Builder(this)
-            .setTitle("タグ削除")
-            .setMessage("タグ「$tag」を削除しますか？")
-            .setPositiveButton("削除") { _, _ ->
-                lifecycleScope.launch {
-                    repository.removeTag(audio.id, tag)
-                }
-            }
-            .setNegativeButton("キャンセル", null)
-            .show()
-    }
-
-    suspend fun getTags(audioId: Long, dao: AudioDao): List<String> {
-        return dao.getTagsForAudio(audioId)
     }
 
     override fun onDestroy() {

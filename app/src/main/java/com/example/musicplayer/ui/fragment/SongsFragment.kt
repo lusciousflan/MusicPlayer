@@ -1,6 +1,8 @@
 package com.example.musicplayer.ui.fragment
 
 import com.example.musicplayer.R
+import androidx.appcompat.app.AppCompatActivity
+import com.example.musicplayer.ui.AudioItemActions
 import com.example.musicplayer.data.local.albumArtUri
 import com.example.musicplayer.data.local.queryAudioFiles
 import com.example.musicplayer.model.AudioFile
@@ -31,6 +33,7 @@ class SongsFragment : Fragment(R.layout.fragment_songs) {
         super.onViewCreated(view, savedInstanceState)
 
         val recyclerView = view.findViewById<RecyclerView>(R.id.recyclerView)
+        val actions = AudioItemActions(requireActivity() as AppCompatActivity)
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
 
         // MediaStoreから返された現在の順番を反転して表示する
@@ -58,26 +61,10 @@ class SongsFragment : Fragment(R.layout.fragment_songs) {
                 requireContext().startService(intent)
             },
 
-            onAddToQueue = { audio ->
-                val intent = Intent(
-                        requireContext(),
-                        MusicService::class.java
-                    )
-                intent.action = "ADD_TO_QUEUE"
-                intent.putExtra("audio", audio)
-                requireContext().startService(intent)
-            },
-
-            onEditTag = { audio ->
-                (requireActivity() as MainActivity)
-                    .showTagDialog(audio)
-            },
-            onEditMemo = { audio ->
-                (requireActivity() as MainActivity).showNoteDialog(audio)
-            },
-            onExcludeDirectory = { audio ->
-                (requireActivity() as MainActivity).excludeDirectoryFor(audio)
-            },
+            onAddToQueue = actions::addToQueue,
+            onEditTag = { audio -> actions.editTags(audio) },
+            onEditMemo = actions::editNote,
+            onExcludeDirectory = actions::excludeDirectory,
             onSelectionChanged = { count ->
                 view.findViewById<Button>(R.id.bulkTagButton).text =
                     if (count == 0) "🏷" else "🏷 ${count}"

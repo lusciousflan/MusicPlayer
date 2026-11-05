@@ -1,6 +1,7 @@
 package com.example.musicplayer.ui.activity
 
 import com.example.musicplayer.R
+import com.example.musicplayer.ui.AudioItemActions
 import com.example.musicplayer.playback.startMusicServiceWithAudioList
 import com.example.musicplayer.data.local.albumArtUri
 import com.example.musicplayer.MyApp
@@ -25,6 +26,7 @@ class PlaylistSongsActivity : AppCompatActivity() {
     private lateinit var repository: MusicRepository
     private lateinit var recyclerView: RecyclerView
     private var currentSongs: List<AudioFile> = emptyList()
+    private val actions by lazy { AudioItemActions(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -73,8 +75,18 @@ class PlaylistSongsActivity : AppCompatActivity() {
                             putExtra("index", position)
                         }
                     },
-                    onAddToQueue = { },
-                    onEditTag = { }
+                    onAddToQueue = actions::addToQueue,
+                    // タグ編集でプレイリストの条件に合わなくなった曲は一覧から外す
+                    onEditTag = { audio ->
+                        actions.editTagsInList(
+                            audio,
+                            recyclerView.adapter as AudioAdapter,
+                            stillMatches = { audioId -> playlistContains(playlist.expression, audioId) },
+                            onListChanged = { currentSongs = it }
+                        )
+                    },
+                    onEditMemo = actions::editNote,
+                    onExcludeDirectory = actions::excludeDirectory
                 )
                 val songsAdapter = recyclerView.adapter as AudioAdapter
                 findViewById<android.view.View>(R.id.sortButton).setOnClickListener {
@@ -94,6 +106,15 @@ class PlaylistSongsActivity : AppCompatActivity() {
             recyclerView.layoutManager = LinearLayoutManager(this@PlaylistSongsActivity)
         }
     }
+
+    private suspend fun playlistContains(expression: String, audioId: Long): Boolean =
+        try {
+            PlaylistEvaluator(tokenize(expression), repository.getAllAudioWithTags())
+                .evaluate()
+                .any { it.audio.id == audioId }
+        } catch (_: PlaylistSyntaxException) {
+            true
+        }
 
     override fun onCreateOptionsMenu(
         menu: Menu

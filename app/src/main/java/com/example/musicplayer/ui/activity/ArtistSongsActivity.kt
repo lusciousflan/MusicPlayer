@@ -6,6 +6,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.musicplayer.R
+import com.example.musicplayer.ui.AudioItemActions
 import com.example.musicplayer.playback.startMusicServiceWithAudioList
 import com.example.musicplayer.data.local.albumArtUri
 import com.example.musicplayer.data.local.queryAudioFiles
@@ -17,6 +18,7 @@ class ArtistSongsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState); setContentView(R.layout.activity_playlist_songs)
         MiniPlayerController(this)
+        val actions = AudioItemActions(this)
         val artistName = intent.getStringExtra("artist") ?: return; title = artistName
         var songs = queryAudioFiles(
             this,
@@ -26,7 +28,11 @@ class ArtistSongsActivity : AppCompatActivity() {
         )
         findViewById<RecyclerView>(R.id.recyclerView).apply {
             layoutManager = LinearLayoutManager(this@ArtistSongsActivity)
-            val songsAdapter = AudioAdapter(songs, ::albumArtUri, { _, index -> startMusicServiceWithAudioList("PLAY_PLAYLIST_FROM_INDEX", songs) { putExtra("index", index) } }, { }, { })
+            val songsAdapter = AudioAdapter(songs, ::albumArtUri, { _, index -> startMusicServiceWithAudioList("PLAY_PLAYLIST_FROM_INDEX", songs) { putExtra("index", index) } },
+                onAddToQueue = actions::addToQueue,
+                onEditTag = { audio -> actions.editTags(audio) },
+                onEditMemo = actions::editNote,
+                onExcludeDirectory = actions::excludeDirectory)
             adapter = songsAdapter
             this@ArtistSongsActivity.findViewById<android.view.View>(R.id.sortButton).setOnClickListener {
                 showAudioSortDialog(this@ArtistSongsActivity, songs, songsAdapter) { songs = it }

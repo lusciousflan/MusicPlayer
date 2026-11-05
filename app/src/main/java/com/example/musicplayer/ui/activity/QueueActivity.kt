@@ -1,6 +1,7 @@
 package com.example.musicplayer.ui.activity
 
 import com.example.musicplayer.R
+import com.example.musicplayer.ui.AudioItemActions
 import com.example.musicplayer.data.local.albumArtUri
 import com.example.musicplayer.playback.MusicService
 import com.example.musicplayer.ui.adapter.AudioAdapter
@@ -23,6 +24,7 @@ class QueueActivity : AppCompatActivity() {
         title = "キュー"
 
         recyclerView = findViewById(R.id.queueRecyclerView)
+        val actions = AudioItemActions(this)
 
         val queueSongs = MusicService.getQueue()
         adapter = AudioAdapter(
@@ -34,8 +36,10 @@ class QueueActivity : AppCompatActivity() {
                 intent.putExtra("index", position)
                 startService(intent)
             },
-            onAddToQueue = { }, // ここは不要なので空
-            onEditTag = { } // Queue画面でもタグの編集がしたくなったらここを編集
+            onAddToQueue = actions::addToQueue,
+            onEditTag = { audio -> actions.editTags(audio) },
+            onEditMemo = actions::editNote,
+            onExcludeDirectory = actions::excludeDirectory
         )
 
         recyclerView.layoutManager = LinearLayoutManager(this)

@@ -61,6 +61,9 @@ class AudioAdapter(
         onSelectionChanged(0)
     }
 
+    /** 現在表示している曲のリスト */
+    fun items(): List<AudioFile> = list
+
     fun getSelectedAudios(): List<AudioFile> = list.filter { it.id in selectedIds }
 
     fun isSelectionMode(): Boolean = selectionMode

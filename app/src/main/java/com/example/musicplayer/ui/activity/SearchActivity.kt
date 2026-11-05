@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.ensureActive
 import com.example.musicplayer.R
+import com.example.musicplayer.ui.AudioItemActions
 import com.example.musicplayer.model.AudioFile
 import com.example.musicplayer.playback.MusicService
 import com.example.musicplayer.ui.adapter.AudioAdapter
@@ -32,6 +33,7 @@ class SearchActivity : AppCompatActivity() {
     private var songs: List<AudioFile> = emptyList()
     private var albums: List<AlbumItem> = emptyList()
     private var searchJob: Job? = null
+    private val actions by lazy { AudioItemActions(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -119,8 +121,10 @@ class SearchActivity : AppCompatActivity() {
         initial,
         getAlbumArtUri = ::albumArtUri,
         onClick = { audio, _ -> startService(Intent(this, MusicService::class.java).apply { action = "PLAY"; putExtra("audio", audio) }) },
-        onAddToQueue = { audio -> startService(Intent(this, MusicService::class.java).apply { action = "ADD_TO_QUEUE"; putExtra("audio", audio) }) },
-        onEditTag = { }
+        onAddToQueue = actions::addToQueue,
+        onEditTag = { audio -> actions.editTags(audio) },
+        onEditMemo = actions::editNote,
+        onExcludeDirectory = actions::excludeDirectory
     )
 
     private fun loadSongs(): List<AudioFile> = queryAudioFiles(this)

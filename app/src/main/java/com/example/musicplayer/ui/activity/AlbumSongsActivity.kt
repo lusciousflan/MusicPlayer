@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.musicplayer.R
+import com.example.musicplayer.ui.AudioItemActions
 import com.example.musicplayer.playback.startMusicServiceWithAudioList
 import com.example.musicplayer.model.AudioFile
 import com.example.musicplayer.data.local.albumArtUri
@@ -21,6 +22,7 @@ class AlbumSongsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_playlist_songs)
         MiniPlayerController(this)
+        val actions = AudioItemActions(this)
         val albumId = intent.getLongExtra("albumId", -1)
         title = intent.getStringExtra("albumName") ?: "アルバム"
         var songs = loadSongs(albumId)
@@ -28,7 +30,10 @@ class AlbumSongsActivity : AppCompatActivity() {
             layoutManager = LinearLayoutManager(this@AlbumSongsActivity)
             adapter = AudioAdapter(songs, ::albumArtUri,
                 onClick = { _, index -> startMusicServiceWithAudioList("PLAY_PLAYLIST_FROM_INDEX", songs) { putExtra("index", index) } },
-                onAddToQueue = { }, onEditTag = { })
+                onAddToQueue = actions::addToQueue,
+                onEditTag = { audio -> actions.editTags(audio) },
+                onEditMemo = actions::editNote,
+                onExcludeDirectory = actions::excludeDirectory)
             val songsAdapter = adapter as AudioAdapter
             this@AlbumSongsActivity.findViewById<android.view.View>(R.id.sortButton).setOnClickListener {
                 showAudioSortDialog(this@AlbumSongsActivity, songs, songsAdapter) { songs = it }
