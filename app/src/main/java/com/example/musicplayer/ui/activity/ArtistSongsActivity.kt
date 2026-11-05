@@ -18,7 +18,7 @@ class ArtistSongsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState); setContentView(R.layout.activity_playlist_songs)
         MiniPlayerController(this)
         val artistName = intent.getStringExtra("artist") ?: return; title = artistName
-        val songs = queryAudioFiles(
+        var songs = queryAudioFiles(
             this,
             "${MediaStore.Audio.Media.ARTIST} = ?",
             arrayOf(artistName),
@@ -29,7 +29,7 @@ class ArtistSongsActivity : AppCompatActivity() {
             val songsAdapter = AudioAdapter(songs, ::albumArtUri, { _, index -> startMusicServiceWithAudioList("PLAY_PLAYLIST_FROM_INDEX", songs) { putExtra("index", index) } }, { }, { })
             adapter = songsAdapter
             this@ArtistSongsActivity.findViewById<android.view.View>(R.id.sortButton).setOnClickListener {
-                showAudioSortDialog(this@ArtistSongsActivity, songs, songsAdapter)
+                showAudioSortDialog(this@ArtistSongsActivity, songs, songsAdapter) { songs = it }
             }
         }
     }
