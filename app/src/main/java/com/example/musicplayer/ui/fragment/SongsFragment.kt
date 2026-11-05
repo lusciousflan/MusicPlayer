@@ -56,7 +56,6 @@ class SongsFragment : Fragment(R.layout.fragment_songs) {
                 intent.action = "PLAY"
                 intent.putExtra("audio", audio)
                 requireContext().startService(intent)
-                adapter.setCurrentPlaying(position)
             },
 
             onAddToQueue = { audio ->

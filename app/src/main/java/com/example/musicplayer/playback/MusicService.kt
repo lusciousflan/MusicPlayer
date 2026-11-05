@@ -581,11 +581,13 @@ class MusicService : MediaSessionService() {
     }
 
     private fun sendNowPlaying() {
+        val audioId = player.currentMediaItem?.mediaId?.toLongOrNull() ?: NowPlaying.NONE
+        NowPlaying.update(audioId)
         val intent = Intent("NOW_PLAYING")
         intent.putExtra("title", currentTitle)
         intent.putExtra("artist", currentArtist)
         intent.putExtra("albumId", currentAlbumId)
-        intent.putExtra("audioId", player.currentMediaItem?.mediaId?.toLongOrNull() ?: -1L)
+        intent.putExtra("audioId", audioId)
         sendBroadcast(intent)
     }
 
@@ -616,6 +618,7 @@ class MusicService : MediaSessionService() {
             mediaSession = null
         }
         MusicService.player = null
+        NowPlaying.update(NowPlaying.NONE)
         super.onDestroy()
     }
 

@@ -1,6 +1,7 @@
 package com.example.musicplayer.ui.adapter
 
 import com.example.musicplayer.R
+import com.example.musicplayer.playback.NowPlaying
 import com.example.musicplayer.model.AudioFile
 import android.view.LayoutInflater
 import android.view.View
@@ -35,7 +36,14 @@ class AudioAdapter(
         val selectionCheckBox: CheckBox = itemView.findViewById(R.id.selectionCheckBox)
     }
 
-    private var currentPlayingIndex: Int = -1
+    // 再生中の曲の ID。行の位置ではなく曲で判定するので、並べ替えや曲の切り替えでずれない。
+    private var playingAudioId: Long = NowPlaying.audioId
+    private val nowPlayingListener: (Long) -> Unit = { audioId ->
+        val oldId = playingAudioId
+        playingAudioId = audioId
+        notifyAudioChanged(oldId)
+        notifyAudioChanged(audioId)
+    }
     private var selectionMode = false
     private val selectedIds = mutableSetOf<Long>()
 
@@ -63,17 +71,25 @@ class AudioAdapter(
         onSelectionChanged(selectedIds.size)
     }
 
-    fun setCurrentPlaying(index: Int) {
-        val oldIndex = currentPlayingIndex
-        currentPlayingIndex = index
+    private fun notifyAudioChanged(audioId: Long) {
+        if (audioId == NowPlaying.NONE) return
+        list.forEachIndexed { index, audio -> if (audio.id == audioId) notifyItemChanged(index) }
+    }
 
-        if (oldIndex != -1) notifyItemChanged(oldIndex)
-        if (index != -1) notifyItemChanged(index)
+    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
+        super.onAttachedToRecyclerView(recyclerView)
+        // 画面に表示されていない間に曲が切り替わっていてもよいよう、最新の再生中の曲から監視を始める
+        nowPlayingListener(NowPlaying.audioId)
+        NowPlaying.addListener(nowPlayingListener)
+    }
+
+    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        NowPlaying.removeListener(nowPlayingListener)
+        super.onDetachedFromRecyclerView(recyclerView)
     }
 
     fun updateList(newList: List<AudioFile>) {
         list = newList
-        currentPlayingIndex = -1
         selectedIds.clear()
         notifyDataSetChanged()
     }
@@ -108,7 +124,7 @@ class AudioAdapter(
             .error(R.drawable.default_art)
             .into(holder.albumArt)
 
-            val isPlaying = position == currentPlayingIndex
+        val isPlaying = audio.id == playingAudioId
 
         // 再生中の曲をハイライトする
         holder.itemView.setBackgroundColor(

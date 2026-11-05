@@ -38,9 +38,6 @@ class QueueActivity : AppCompatActivity() {
             onEditTag = { } // Queue画面でもタグの編集がしたくなったらここを編集
         )
 
-        val current = MusicService.player?.currentMediaItemIndex ?: -1
-        adapter.setCurrentPlaying(current)
-
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.adapter = adapter
     }
