@@ -57,6 +57,7 @@ fun queryAudioFiles(
         MediaStore.Audio.Media.ARTIST,
         MediaStore.Audio.Media.ALBUM_ID,
         MediaStore.Audio.Media.ALBUM,
+        MediaStore.Audio.Media.DATE_ADDED,
         pathColumn
     )
 
@@ -79,6 +80,7 @@ fun queryAudioFiles(
         val artistIndex = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
         val albumIdIndex = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
         val albumNameIndex = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
+        val dateAddedIndex = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
         val pathIndex = it.getColumnIndexOrThrow(pathColumn)
 
         while (it.moveToNext()) {
@@ -95,7 +97,9 @@ fun queryAudioFiles(
                     artist = it.getString(artistIndex).orEmpty(),
                     uri = ContentUris.withAppendedId(uri, id).toString(),
                     albumId = it.getLong(albumIdIndex),
-                    albumName = it.getString(albumNameIndex).orEmpty()
+                    albumName = it.getString(albumNameIndex).orEmpty(),
+                    // MediaStore の追加日時は秒単位なので、アプリ内で使うミリ秒に揃える
+                    addedAt = it.getLong(dateAddedIndex) * 1000
                 )
             )
         }
@@ -107,5 +111,8 @@ fun queryAudioFiles(
 /** DB 同期用に、MediaStore の楽曲を [AudioEntity] として読み込む。 */
 fun loadAudioFromMediaStore(context: Context): List<AudioEntity> =
     queryAudioFiles(context).map { audio ->
-        AudioEntity(audio.id, audio.title, audio.artist, audio.uri, audio.albumId)
+        AudioEntity(
+            audio.id, audio.title, audio.artist, audio.uri, audio.albumId,
+            addedAt = audio.addedAt
+        )
     }

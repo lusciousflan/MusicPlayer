@@ -6,6 +6,7 @@ import androidx.room.Delete
 import androidx.room.Query
 import androidx.room.OnConflictStrategy
 import androidx.room.Transaction
+import androidx.room.Update
 import androidx.room.RewriteQueriesToDropUnusedColumns
 
 @Dao
@@ -45,8 +46,11 @@ interface AudioDao {
     @Query("SELECT * FROM audio")
     suspend fun getAllAudioWithTags(): List<AudioWithTags>
 
-    @Query("SELECT id FROM audio")
-    suspend fun getAllIds(): List<Long>
+    @Query("SELECT * FROM audio")
+    suspend fun getAllAudio(): List<AudioEntity>
+
+    @Update
+    suspend fun updateAudio(audioList: List<AudioEntity>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(audioList: List<AudioEntity>)

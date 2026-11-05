@@ -93,7 +93,8 @@ class SongsFragment : Fragment(R.layout.fragment_songs) {
             val enriched = audioList.map { audio ->
                 val stored = metadata[audio.id]?.audio
                 if (stored == null) audio else audio.copy(
-                    addedAt = stored.addedAt,
+                    // 起動直後の同期前で DB の追加日時が未記録(0)なら、MediaStore の値のままにする
+                    addedAt = stored.addedAt.takeIf { it > 0 } ?: audio.addedAt,
                     playCount = stored.playCount
                 )
             }

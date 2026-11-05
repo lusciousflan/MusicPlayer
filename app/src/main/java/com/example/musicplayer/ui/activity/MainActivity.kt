@@ -74,9 +74,6 @@ class MainActivity : AppCompatActivity() {
         val dao = (application as MyApp).database.audioDao()
         repository = MusicRepository(dao)
 
-        lifecycleScope.launch(Dispatchers.IO) {
-            syncMediaStore(this@MainActivity, dao)
-        }
         val tabLayout = findViewById<com.google.android.material.tabs.TabLayout>(R.id.tabLayout)
         val pager = findViewById<ViewPager2>(R.id.libraryPager)
         pager.adapter = MainPagerAdapter(this)
@@ -108,7 +105,8 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         lifecycleScope.launch(Dispatchers.IO) {
-            syncMediaStore(this@MainActivity, (application as MyApp).database.audioDao())
+            // 起動直後も onCreate の後に必ずここを通るので、同期はここだけで行う
+            syncMediaStore(this@MainActivity, (application as MyApp).database)
             withContext(Dispatchers.Main) {
                 // ViewPager2 manages the library fragment lifecycle and reloads it on resume.
             }
