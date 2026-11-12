@@ -3,6 +3,7 @@ package com.example.musicplayer.ui.activity
 import com.example.musicplayer.R
 import com.example.musicplayer.data.local.albumArtUri
 import com.example.musicplayer.playback.MusicService
+import com.example.musicplayer.playback.ProgressWatchers
 import androidx.appcompat.app.AppCompatActivity
 import android.widget.TextView
 import android.widget.Button
@@ -189,6 +190,7 @@ class PlayerActivity : AppCompatActivity() {
         registerReceiver(receiver, IntentFilter("AUDIO_GAIN_CHANGED"))
         registerReceiver(receiver, IntentFilter("REPEAT_STATE_CHANGED"))
         registerReceiver(receiver, IntentFilter("SHUFFLE_STATE_CHANGED"))
+        ProgressWatchers.watch()
 
         startService(Intent(this, MusicService::class.java).apply {
             action = "REQUEST_STATE"
@@ -200,6 +202,7 @@ class PlayerActivity : AppCompatActivity() {
         super.onPause()
         unregisterReceiver(receiver)
         unregisterReceiver(progressReceiver)
+        ProgressWatchers.unwatch()
     }
 
     private fun formatTime(ms: Int): String {

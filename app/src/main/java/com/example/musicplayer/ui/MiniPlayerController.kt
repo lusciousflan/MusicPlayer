@@ -14,6 +14,7 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.example.musicplayer.R
 import com.example.musicplayer.playback.MusicService
+import com.example.musicplayer.playback.ProgressWatchers
 import com.example.musicplayer.ui.activity.PlayerActivity
 
 /**
@@ -85,6 +86,7 @@ class MiniPlayerController(private val activity: AppCompatActivity) : DefaultLif
                 ContextCompat.RECEIVER_NOT_EXPORTED
             )
             registered = true
+            ProgressWatchers.watch()
         }
         activity.startService(Intent(activity, MusicService::class.java).setAction("REQUEST_STATE"))
     }
@@ -93,6 +95,7 @@ class MiniPlayerController(private val activity: AppCompatActivity) : DefaultLif
         if (registered) {
             activity.unregisterReceiver(receiver)
             registered = false
+            ProgressWatchers.unwatch()
         }
     }
 

@@ -11,7 +11,9 @@ import android.widget.ListView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.appcompat.widget.SwitchCompat
 import com.example.musicplayer.R
+import com.example.musicplayer.playback.PlaybackSettings
 import java.io.File
 
 class SettingsActivity : AppCompatActivity() {
@@ -37,6 +39,12 @@ class SettingsActivity : AppCompatActivity() {
         list.adapter = adapter
         findViewById<Button>(R.id.addExcludedDirectory).setOnClickListener { showAddDialog() }
         findViewById<Button>(R.id.themeButton).setOnClickListener { showThemeDialog() }
+        findViewById<SwitchCompat>(R.id.pauseForOtherAppsSwitch).apply {
+            isChecked = PlaybackSettings.pauseForOtherApps(preferences)
+            setOnCheckedChangeListener { _, checked ->
+                preferences.edit().putBoolean(PlaybackSettings.KEY_PAUSE_FOR_OTHER_APPS, checked).apply()
+            }
+        }
         list.setOnItemLongClickListener { _, _, position, _ ->
             val path = adapter.getItem(position) ?: return@setOnItemLongClickListener true
             AlertDialog.Builder(this)

@@ -4,6 +4,13 @@
     android:orientation="vertical" android:padding="16dp">
     <Button android:id="@+id/themeButton" android:layout_width="wrap_content"
         android:layout_height="wrap_content" android:text="テーマ設定" />
+    <androidx.appcompat.widget.SwitchCompat android:id="@+id/pauseForOtherAppsSwitch"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:paddingVertical="8dp"
+        android:text="他のアプリが音を鳴らしたら一時停止する" />
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:paddingBottom="16dp"
+        android:text="オフにすると、動画や通話の音と重なっても再生を続けます。" />
     <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
         android:text="ここに登録したパスの楽曲はライブラリから除外します。長押しで削除できます。" />
     <Button android:id="@+id/addExcludedDirectory" android:layout_width="wrap_content"

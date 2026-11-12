@@ -4,12 +4,15 @@ import com.example.musicplayer.model.AudioFile
 import android.app.*
 import android.content.Intent
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.MediaSession
 import android.content.Context
+import android.content.SharedPreferences
 import android.os.IBinder
 import android.os.Handler
 import android.os.Looper
@@ -57,6 +60,14 @@ class MusicService : MediaSessionService() {
     // キューの曲の並びが変わり、曲 ID の一覧を保存し直す必要があるか
     private var queueItemsDirty = false
     private val saveQueueRunnable = Runnable { saveQueue() }
+    private lateinit var settingsPreferences: SharedPreferences
+    // SharedPreferences は登録したリスナーを弱参照でしか持たないため、フィールドで保持する
+    private val settingsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == PlaybackSettings.KEY_PAUSE_FOR_OTHER_APPS) applyAudioFocusSetting()
+    }
+    private val progressWatchersListener: (Boolean) -> Unit = { watched ->
+        if (watched && player.isPlaying) startProgressUpdates() else if (!watched) stopProgressUpdates()
+    }
 
     companion object {
         // 通知のアルバムアートを読み込むときの最大の一辺(px)。これより大きい画像は縮小する。
@@ -74,7 +85,13 @@ class MusicService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
 
-        player = ExoPlayer.Builder(this).build()
+        settingsPreferences = getSharedPreferences("music_settings", MODE_PRIVATE)
+        player = ExoPlayer.Builder(this)
+            // イヤホンを抜いたら、スピーカーで鳴り続けないよう一時停止する
+            .setHandleAudioBecomingNoisy(true)
+            .build()
+        applyAudioFocusSetting()
+        settingsPreferences.registerOnSharedPreferenceChangeListener(settingsListener)
         // UI に表示する初期値と ExoPlayer の実際のリピート状態を一致させる。
         player.repeatMode = Player.REPEAT_MODE_ALL
         isRepeatAll = player.repeatMode == Player.REPEAT_MODE_ALL
@@ -139,7 +156,23 @@ class MusicService : MediaSessionService() {
                 }
             }
         )
+        ProgressWatchers.addListener(progressWatchersListener)
         restoreSavedQueue()
+    }
+
+    /**
+     * 「他のアプリが音を鳴らしたら一時停止する」設定を反映する。
+     * オンなら音声フォーカスを扱い、他のアプリの再生や通話に合わせて一時停止・音量を下げる。
+     * オフなら音声フォーカスを扱わず、他のアプリの音と重なっても再生を続ける。
+     */
+    private fun applyAudioFocusSetting() {
+        player.setAudioAttributes(
+            AudioAttributes.Builder()
+                .setUsage(C.USAGE_MEDIA)
+                .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                .build(),
+            /* handleAudioFocus = */ PlaybackSettings.pauseForOtherApps(settingsPreferences)
+        )
     }
 
     /**
@@ -236,8 +269,7 @@ class MusicService : MediaSessionService() {
             // A previous asynchronous lookup must not overwrite the newly
             // selected track's value after a fast track transition.
             if (player.currentMediaItem?.mediaId != audio.id.toString()) return@launch
-            ensureLoudnessEnhancer()
-            loudnessEnhancer?.setTargetGain(gain)
+            setLoudnessGain(gain)
             sendBroadcast(Intent("AUDIO_GAIN_CHANGED").apply {
                 putExtra("audioId", audio.id)
                 putExtra("gainDbHundredths", gain)
@@ -258,12 +290,27 @@ class MusicService : MediaSessionService() {
         }
     }
 
+    /**
+     * 音量補正を設定する。補正しない曲(0)では、音声にエフェクト処理をかけないよう無効にする。
+     */
+    private fun setLoudnessGain(gain: Int) {
+        if (gain <= 0) {
+            loudnessEnhancer?.setEnabled(false)
+            return
+        }
+        ensureLoudnessEnhancer()
+        loudnessEnhancer?.apply {
+            setTargetGain(gain)
+            setEnabled(true)
+        }
+    }
+
     private fun ensureLoudnessEnhancer() {
         if (loudnessEnhancer != null) return
         val sessionId = player.audioSessionId
         if (sessionId == 0) return
         try {
-            loudnessEnhancer = LoudnessEnhancer(sessionId).apply { setEnabled(true) }
+            loudnessEnhancer = LoudnessEnhancer(sessionId)
         } catch (e: RuntimeException) {
             // Some device audio implementations don't provide this effect.
             Log.w("MusicService", "LoudnessEnhancer is not available", e)
@@ -313,7 +360,10 @@ class MusicService : MediaSessionService() {
                 }
             }
             "TOGGLE_PLAY" -> {
-                if (isPlaying) {
+                // 通話中などで音声フォーカスを一時的に失っている間は、isPlaying は false でも再生待ちになっている。
+                // そのとき押されたら、フォーカスが戻っても自動で再開しないよう一時停止として扱う。
+                val wantsToPlay = player.playWhenReady && player.playbackState != Player.STATE_ENDED
+                if (wantsToPlay) {
                     player.pause()
                     isPlaying = false
                 } else {
@@ -449,8 +499,7 @@ class MusicService : MediaSessionService() {
                             .upsertAudioVolume(AudioVolumeEntity(audioId, gain))
                         launch(Dispatchers.Main) {
                             if (player.currentMediaItem?.mediaId == audioId.toString()) {
-                                ensureLoudnessEnhancer()
-                                loudnessEnhancer?.setTargetGain(gain)
+                                setLoudnessGain(gain)
                             }
                         }
                     }
@@ -619,16 +668,18 @@ class MusicService : MediaSessionService() {
     }
 
     /**
-     * 再生中は 0.5 秒ごとに再生位置を画面へ送る。
-     * 一時停止中は位置が変わらないので送らない（電池の消費を抑えるため）。再生が止まるとループも止まる。
+     * 再生中で、再生位置を表示している画面があるときだけ、秒が変わるごとに再生位置を画面へ送る。
+     * 一時停止中や画面オフ中は送らない（電池の消費を抑えるため）。再生が止まるか画面が隠れるとループも止まる。
      */
     private fun startProgressUpdates() {
         stopProgressUpdates()
+        // 画面オフ中など、再生位置を表示している画面がなければ送らない
+        if (!ProgressWatchers.isWatched) return
         progressRunnable = object : Runnable {
             override fun run() {
                 sendProgress()
-                if (player.isPlaying) {
-                    handler.postDelayed(this, 500)
+                if (player.isPlaying && ProgressWatchers.isWatched) {
+                    handler.postDelayed(this, ProgressWatchers.nextUpdateDelayMs(player.currentPosition))
                 } else {
                     progressRunnable = null
                 }
@@ -713,6 +764,10 @@ class MusicService : MediaSessionService() {
 
     override fun onDestroy() {
         Log.d("MusicService", "onDestroy")
+        ProgressWatchers.removeListener(progressWatchersListener)
+        if (this::settingsPreferences.isInitialized) {
+            settingsPreferences.unregisterOnSharedPreferenceChangeListener(settingsListener)
+        }
         stopProgressUpdates()
         try {
             if (this::player.isInitialized) {
