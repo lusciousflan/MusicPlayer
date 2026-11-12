@@ -105,8 +105,8 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         lifecycleScope.launch(Dispatchers.IO) {
-            // 起動直後も onCreate の後に必ずここを通るので、同期はここだけで行う
-            syncMediaStore(this@MainActivity, (application as MyApp).database)
+            // 起動直後も onCreate の後に必ずここを通るので、同期はここだけで行う。MediaStore が変わっていなければ何もしない
+            syncMediaStoreIfChanged(this@MainActivity, (application as MyApp).database)
             withContext(Dispatchers.Main) {
                 // ViewPager2 manages the library fragment lifecycle and reloads it on resume.
             }

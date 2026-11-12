@@ -9,10 +9,13 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
+import androidx.media3.common.TrackSelectionParameters.AudioOffloadPreferences
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.MediaSession
 import android.content.Context
 import android.content.SharedPreferences
+import android.net.Uri
+import android.provider.MediaStore
 import android.os.IBinder
 import android.os.Handler
 import android.os.Looper
@@ -60,6 +63,8 @@ class MusicService : MediaSessionService() {
     // キューの曲の並びが変わり、曲 ID の一覧を保存し直す必要があるか
     private var queueItemsDirty = false
     private val saveQueueRunnable = Runnable { saveQueue() }
+    // 準備前(STATE_IDLE)の曲の長さ。(曲 ID, 長さ ms)
+    private var idleDuration: Pair<String, Long>? = null
     private lateinit var settingsPreferences: SharedPreferences
     // SharedPreferences は登録したリスナーを弱参照でしか持たないため、フィールドで保持する
     private val settingsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -89,6 +94,17 @@ class MusicService : MediaSessionService() {
         player = ExoPlayer.Builder(this)
             // イヤホンを抜いたら、スピーカーで鳴り続けないよう一時停止する
             .setHandleAudioBecomingNoisy(true)
+            .build()
+        // 端末が対応していれば、画面オフ中の音声のデコードを省電力の専用ハードに任せる(オーディオオフロード)。
+        // 音量補正のエフェクトが有効な曲や、対応していない形式・端末では自動的に通常の再生になる。
+        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+            .setAudioOffloadPreferences(
+                AudioOffloadPreferences.Builder()
+                    .setAudioOffloadMode(AudioOffloadPreferences.AUDIO_OFFLOAD_MODE_ENABLED)
+                    // アルバムなどの曲間が途切れないよう、ギャップレス再生できる場合だけ使う
+                    .setIsGaplessSupportRequired(true)
+                    .build()
+            )
             .build()
         applyAudioFocusSetting()
         settingsPreferences.registerOnSharedPreferenceChangeListener(settingsListener)
@@ -138,6 +154,9 @@ class MusicService : MediaSessionService() {
                     sendProgress()
                     updateNotification()
                     scheduleQueueSave()
+                    if (audio != null && player.playbackState == Player.STATE_IDLE) {
+                        loadDurationWhileIdle(audio)
+                    }
                 }
 
                 override fun onTimelineChanged(timeline: Timeline, reason: Int) {
@@ -212,8 +231,8 @@ class MusicService : MediaSessionService() {
             }
             // 読み込んだ一覧は保存済みのものと同じなので、書き直さない
             queueItemsDirty = false
-            // 曲の長さと再生位置を画面に出せるよう、再生はせずに準備だけしておく
-            player.prepare()
+            // ここでは prepare() しない。準備するとデコーダを確保し、再生しないままでも ExoPlayer が定期的に動き続けるため。
+            // 準備は再生ボタンが押されたとき(prepareIfNeeded)に行い、曲の長さは MediaStore から読んで表示する。
             sendBroadcast(Intent("SHUFFLE_STATE_CHANGED").putExtra("isShuffle", isShuffle))
             sendNowPlaying()
         }
@@ -693,11 +712,37 @@ class MusicService : MediaSessionService() {
     }
 
     private fun sendProgress() {
-        if (!player.isPlaying && player.playbackState == Player.STATE_IDLE) return
+        val mediaId = player.currentMediaItem?.mediaId ?: return
+        // ExoPlayer は準備が終わるまで曲の長さが分からない。準備前は MediaStore から読んだ長さを使い、それもなければ送らない。
+        val duration = player.duration.takeIf { it != C.TIME_UNSET }
+            ?: idleDuration?.takeIf { it.first == mediaId }?.second
+            ?: return
         val intent = Intent("MUSIC_PROGRESS")
         intent.putExtra("current", player.currentPosition.toInt())
-        intent.putExtra("duration", player.duration.toInt())
+        intent.putExtra("duration", duration.toInt())
         sendBroadcast(intent)
+    }
+
+    /** 準備前の曲の長さを MediaStore から読み、読めたら再生位置と一緒に画面へ送る。 */
+    private fun loadDurationWhileIdle(audio: AudioFile) {
+        val mediaId = audio.id.toString()
+        if (idleDuration?.first == mediaId) return
+        serviceScope.launch {
+            val duration = withContext(Dispatchers.IO) { queryDuration(audio.uri) } ?: return@launch
+            idleDuration = mediaId to duration
+            if (player.currentMediaItem?.mediaId == mediaId) sendProgress()
+        }
+    }
+
+    private fun queryDuration(uri: String): Long? = try {
+        contentResolver.query(
+            Uri.parse(uri), arrayOf(MediaStore.Audio.Media.DURATION), null, null, null
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) cursor.getLong(0).takeIf { it > 0 } else null
+        }
+    } catch (e: Exception) {
+        Log.w("MusicService", "Failed to read duration", e)
+        null
     }
 
     /**
