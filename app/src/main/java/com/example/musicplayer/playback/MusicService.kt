@@ -6,6 +6,7 @@ import android.content.Intent
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.Timeline
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.MediaSession
 import android.content.Context
@@ -20,7 +21,9 @@ import android.util.Log
 import android.media.audiofx.LoudnessEnhancer
 import com.example.musicplayer.MyApp
 import com.example.musicplayer.data.local.AudioVolumeEntity
+import com.example.musicplayer.data.local.AudioWithTags
 import com.example.musicplayer.data.local.albumArtUri
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -46,6 +49,14 @@ class MusicService : MediaSessionService() {
     private var sleepTimerRunnable: Runnable? = null
     private var loudnessEnhancer: LoudnessEnhancer? = null
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private lateinit var queueStore: QueueStore
+    // 保存したキューを読み込んでいる間は、空のキューで保存内容を上書きしないように保存を止める
+    private var isRestoringQueue = false
+    // キューの復元で曲が切り替わったときは、再生回数を数えない
+    private var suppressPlayCount = false
+    // キューの曲の並びが変わり、曲 ID の一覧を保存し直す必要があるか
+    private var queueItemsDirty = false
+    private val saveQueueRunnable = Runnable { saveQueue() }
 
     companion object {
         // 通知のアルバムアートを読み込むときの最大の一辺(px)。これより大きい画像は縮小する。
@@ -69,6 +80,7 @@ class MusicService : MediaSessionService() {
         isRepeatAll = player.repeatMode == Player.REPEAT_MODE_ALL
         MusicService.player = player
         mediaSession = MediaSession.Builder(this, player).build()
+        queueStore = QueueStore(this)
         player.addListener(
             object : Player.Listener {
                 override fun onIsPlayingChanged(playing: Boolean) {
@@ -83,6 +95,8 @@ class MusicService : MediaSessionService() {
                         // 止まった位置を画面に反映してから、定期送信をやめる
                         stopProgressUpdates()
                         sendProgress()
+                        // 一時停止したまま終了されても同じ位置から再開できるように保存する
+                        saveQueue()
                     }
                 }
                 override fun onPlaybackStateChanged(playbackState: Int) {
@@ -98,7 +112,7 @@ class MusicService : MediaSessionService() {
                     currentArtist = audio?.artist ?: ""
                     currentAlbumId = audio?.albumId ?: -1
                     applyGainFor(audio)
-                    if (audio != null) {
+                    if (audio != null && !suppressPlayCount) {
                         serviceScope.launch(Dispatchers.IO) {
                             (application as MyApp).database.audioDao().incrementPlayCount(audio.id)
                         }
@@ -106,6 +120,14 @@ class MusicService : MediaSessionService() {
                     sendNowPlaying()
                     sendProgress()
                     updateNotification()
+                    scheduleQueueSave()
+                }
+
+                override fun onTimelineChanged(timeline: Timeline, reason: Int) {
+                    if (reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED) {
+                        queueItemsDirty = true
+                        scheduleQueueSave()
+                    }
                 }
 
                 override fun onRepeatModeChanged(repeatMode: Int) {
@@ -117,7 +139,94 @@ class MusicService : MediaSessionService() {
                 }
             }
         )
+        restoreSavedQueue()
     }
+
+    /**
+     * 前回終了したときのキューを、再生はせずに読み込んでおく。
+     * 読み込み中に別の曲の再生が始まった場合は、そちらを優先して復元しない。
+     */
+    private fun restoreSavedQueue() {
+        val saved = queueStore.load() ?: return
+        isRestoringQueue = true
+        serviceScope.launch {
+            val restored = try {
+                val audiosById = withContext(Dispatchers.IO) {
+                    (application as MyApp).database.audioDao().getAllAudioWithTags()
+                }.associate { it.audio.id to it.toAudioFile() }
+                restoreQueue(saved, audiosById)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w("MusicService", "Failed to restore queue", e)
+                null
+            } finally {
+                isRestoringQueue = false
+            }
+            if (restored == null || player.mediaItemCount > 0) return@launch
+
+            restored.audios.forEach { audio -> audioMap[audio.id.toString()] = audio }
+            isShuffle = saved.isShuffle
+            suppressPlayCount = true
+            try {
+                player.setMediaItems(
+                    restored.audios.map { it.toMediaItem() },
+                    restored.currentIndex,
+                    restored.positionMs
+                )
+            } finally {
+                suppressPlayCount = false
+            }
+            // 読み込んだ一覧は保存済みのものと同じなので、書き直さない
+            queueItemsDirty = false
+            // 曲の長さと再生位置を画面に出せるよう、再生はせずに準備だけしておく
+            player.prepare()
+            sendBroadcast(Intent("SHUFFLE_STATE_CHANGED").putExtra("isShuffle", isShuffle))
+            sendNowPlaying()
+        }
+    }
+
+    /** キューの編集が続いたときに何度も書き込まないよう、少し待ってからまとめて保存する。 */
+    private fun scheduleQueueSave() {
+        handler.removeCallbacks(saveQueueRunnable)
+        handler.postDelayed(saveQueueRunnable, 1_000)
+    }
+
+    private fun saveQueue(sync: Boolean = false) {
+        handler.removeCallbacks(saveQueueRunnable)
+        if (isRestoringQueue) return
+        // 曲 ID の一覧は、キューの並びが変わったときだけ作って保存する
+        val ids = if (queueItemsDirty) {
+            (0 until player.mediaItemCount).mapNotNull {
+                player.getMediaItemAt(it).mediaId.toLongOrNull()
+            }
+        } else {
+            emptyList()
+        }
+        queueStore.save(
+            SavedQueue(
+                audioIds = ids,
+                currentIndex = player.currentMediaItemIndex,
+                positionMs = player.currentPosition,
+                isShuffle = isShuffle
+            ),
+            includeItems = queueItemsDirty,
+            sync = sync
+        )
+        queueItemsDirty = false
+    }
+
+    private fun AudioWithTags.toAudioFile() = AudioFile(
+        id = audio.id,
+        title = audio.title,
+        artist = audio.artist,
+        uri = audio.uri,
+        albumId = audio.albumId,
+        albumName = audio.albumName,
+        tags = tags.mapTo(mutableSetOf()) { it.name },
+        addedAt = audio.addedAt,
+        playCount = audio.playCount
+    )
 
     private fun applyGainFor(audio: AudioFile?) {
         if (audio == null) return
@@ -305,6 +414,7 @@ class MusicService : MediaSessionService() {
                 if (isShuffle) {
                     shuffleCurrentQueue()
                 }
+                scheduleQueueSave()
                 Toast.makeText(this,
                     if (isShuffle) "シャッフルON" else "シャッフルOFF",
                     Toast.LENGTH_SHORT
@@ -606,6 +716,7 @@ class MusicService : MediaSessionService() {
         stopProgressUpdates()
         try {
             if (this::player.isInitialized) {
+                saveQueue(sync = true)
                 player.release()
             }
             loudnessEnhancer?.release()
@@ -624,6 +735,8 @@ class MusicService : MediaSessionService() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         Log.d("MusicService", "onTaskRemoved")
+        // この後プロセスごと終了されることがあるため、ここで確実に保存しておく
+        saveQueue(sync = true)
 
         if (player.isPlaying) {
             startForeground(1, createNotification())
